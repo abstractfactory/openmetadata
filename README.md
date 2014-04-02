@@ -1,4 +1,7 @@
-openmetadata
+Open Metadata
 ============
 
-Programmable Folders
+In development, see specifications here:
+
+* rfc.abstractfactory.io/spec
+* 
