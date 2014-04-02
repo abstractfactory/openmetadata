@@ -2,6 +2,7 @@
 import lib
 import service
 
+Node = lib.Node
 Location = lib.Location
 Group = lib.GroupFactory
 Dataset = lib.DatasetFactory

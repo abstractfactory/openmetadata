@@ -1,6 +1,8 @@
 Open Metadata
 =============
 
+![](https://dl.dropbox.com/s/av2x8gel580ow48/om2_hierarchy.png)
+
 In development, see specifications here:
 
 * [General Introduction](http://rfc.abstractfactory.io/spec:10)

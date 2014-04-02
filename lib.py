@@ -1,10 +1,11 @@
-"""Generic objects used as baseclasses for datatype.py"""
 
 from openmetadata_mk2 import service
 
 EXT = '.'
 SEP = '/'
 CONTAINER = '.meta'
+HISTORY = '.history'
+VERSIONS = '.versions'
 
 
 class Node(object):
@@ -26,7 +27,10 @@ class Node(object):
     def __repr__(self):
         return u"%s(%r)" % (self.__class__.__name__, self.__str__())
 
-    def __init__(self):
+    def __init__(self, path):
+        self._path = path
+        self._suffix = None
+        self._type = None
         self._isvalid = None
 
     @property
@@ -55,30 +59,9 @@ class Node(object):
         return path
 
     @property
-    def isvalid(self):
-        if self._isvalid is None:
-            # Refresh path to ensure it is valid
-            getattr(self, 'path')
-        return self._isvalid
-
-
-class MetaNode(Node):
-    """
-     ____
-    |    |_______
-    |            |
-    |   __/_     |
-    |    /       |
-    |____________|
-
-    MetaNode represents a metadata entry on disk (Group or Dataset)
-
-    """
-
-    @property
-    def datatype(self):
+    def type(self):
         """
-        Find datatype by looking in the object or its suffix
+        Find type by looking in the object or its suffix
          _________         __________
         |         |       |          |
         |  cache  |  -->  |  suffix  |
@@ -86,10 +69,10 @@ class MetaNode(Node):
 
         """
 
-        if not self._datatype:
-            self._datatype = string_to_python(self.suffix)
+        if not self._type:
+            self._type = string_to_python(self.suffix)
 
-        return self._datatype
+        return self._type
 
     @property
     def suffix(self):
@@ -106,6 +89,13 @@ class MetaNode(Node):
             self._suffix = (self._path.split(EXT) + [None])[1]
 
         return self._suffix
+
+    @property
+    def isvalid(self):
+        if self._isvalid is None:
+            # Refresh path to ensure it is valid
+            getattr(self, 'path')
+        return self._isvalid
 
 
 class Location(Node):
@@ -129,10 +119,9 @@ class Location(Node):
             yield child
 
     def __init__(self, path):
-        super(Location, self).__init__()
+        super(Location, self).__init__(path)
         assert service.exists(path)
         self._children = {}
-        self._path = path
 
     def copy(self, path=None):
         node = self.__class__(path or self._path)
@@ -160,18 +149,17 @@ class Location(Node):
         return self._children.values()
 
 
-class Group(MetaNode):
+class Group(Node):
 
     def __iter__(self):
         for child in self.children:
             yield child
 
     def __init__(self, path, parent=None):
-        super(Group, self).__init__()
-        self._path = path
+        super(Group, self).__init__(path)
         self._children = {}
         self._suffix = None
-        self._datatype = None
+        self._type = None
         self.parent = parent
 
         if parent:
@@ -191,7 +179,7 @@ class Group(MetaNode):
         return self._children.values()
 
 
-class Blob(MetaNode):
+class Blob(Node):
     """
      ______
     |       \
@@ -203,10 +191,9 @@ class Blob(MetaNode):
     """
 
     def __init__(self, path, data=None, parent=None):
-        super(Blob, self).__init__()
-        self._path = path
+        super(Blob, self).__init__(path)
         self._data = None
-        self._datatype = None  # cache
+        self._type = None  # cache
         self._suffix = None  # cache
         self.parent = parent
 
@@ -228,7 +215,7 @@ class Blob(MetaNode):
     def data(self):
         if self._data is None:
             return None
-        return self.datatype(self._data)
+        return self.type(self._data)
 
     @data.setter
     def data(self, data):
@@ -236,11 +223,11 @@ class Blob(MetaNode):
             self._data = data
             return
 
-        if not self.datatype:
-            self._datatype = data.__class__
+        if not self.type:
+            self._type = data.__class__
 
         try:
-            data = self.datatype(data)
+            data = self.type(data)
 
         except TypeError:
             # Item has no type
@@ -250,7 +237,7 @@ class Blob(MetaNode):
             # Invalid data-type
             raise ValueError('Data-type %r, expected %r'
                              % (data.__class__.__name__,
-                                self.datatype.__name__))
+                                self.type.__name__))
 
         self._data = data
         self.isdirty = True
@@ -295,11 +282,23 @@ class Dataset(Blob):
     def dump(self):
         """
         Dump Python data-type to disk, unless it is None,
-        in which case dump nothing
+        in which case dump nothing.
 
         """
 
         return str(self.data) if self.data is not None else ''
+
+    def __getattr__(self, metaattr):
+        """Retrieve meta-metadata as per RFC15"""
+        raise NotImplementedError
+
+
+class History(Node):
+    pass
+
+
+class Versions(Node):
+    pass
 
 
 """
@@ -418,34 +417,34 @@ Factories
 
 
 class _FactoryBase(object):
-    datatypes = {}
+    types = {}
     default = None
 
     def __new__(cls, path, *args, **kwargs):
         suffix = service.suffix(path)
-        Datatype = cls.datatypes.get(suffix) or cls.default
+        Datatype = cls.types.get(suffix) or cls.default
         return Datatype(path, *args, **kwargs)
 
     @classmethod
-    def register(cls, datatype):
-        cls.datatypes[datatype.__name__.lower()] = datatype
+    def register(cls, type):
+        cls.types[type.__name__.lower()] = type
 
     @classmethod
-    def unregister(cls, datatype):
+    def unregister(cls, type):
         pass
 
 
 class GroupFactory(_FactoryBase):
-    datatypes = {}
+    types = {}
     default = Group
 
 
 class DatasetFactory(_FactoryBase):
-    datatypes = {}
+    types = {}
     default = Dataset
 
 
-supported_datatypes = {
+supported_types = {
     'datasets': (
         Bool,
         Int,
@@ -465,10 +464,10 @@ supported_datatypes = {
 
 
 def register():
-    for dataset in supported_datatypes['datasets']:
+    for dataset in supported_types['datasets']:
         DatasetFactory.register(dataset)
 
-    for group in supported_datatypes['groups']:
+    for group in supported_types['groups']:
         GroupFactory.register(group)
 
 
@@ -541,17 +540,38 @@ def write(path, data, *metapaths):
 
 
 def pull(item):
-    """Read from disk"""
-    # print "Pulling %s" % item.path
+    """
+    Main mechanism with which to read data from disk into memory.
+
+    Features
+        '.'  -- Names starting with a dot (.) are invisible
+                to regular operation and may be used by other
+                mechanisms for other purposes; such as meta-
+                metadata and history.
+
+    """
+
     if isinstance(item, Blob):
         item.data = service.readfile(item.path)
     else:
         dirs, files = service.readdir(item.path)
 
         for dir_ in dirs:
+            if dir_ == HISTORY:
+                continue
+
+            if dir_ == VERSIONS:
+                continue
+
+            if dir_.startswith("."):
+                continue
+
             GroupFactory(dir_, parent=item)
 
         for file_ in files:
+            if file_.startswith("."):
+                continue
+
             DatasetFactory(file_, parent=item)
 
     item.isdirty = False
@@ -571,6 +591,10 @@ if __name__ == '__main__':
     # ostring = om.Dataset('simple_data.string', parent=location)
     # ostring.data = 'my simple string'
 
+    # Add text
+    # text = om.Dataset('story.text', parent=location)
+    # text.data = 'There once was a boy'
+
     # # Add a list
     # olist = om.Group('mylist.list', parent=location)
 
@@ -582,13 +606,16 @@ if __name__ == '__main__':
     # # ..and a dictionary..
     # odict = om.Group(path='mydict.dict', parent=olist)
 
-    # # ..with two keys
+    # # ..with tree keys
     # key1 = om.Dataset('key1.string', data='value', parent=odict)
 
     # # One of which, we neglect to specify a data-type.
     # # The data-type will be determined via the Python data-type <str>
     # key2 = om.Dataset('key2', data=True, parent=odict)
     # print key2.path
+
+    # text = om.Dataset('story.text', parent=odict)
+    # text.data = 'There once was a boy'
 
     # Finally, write it to disk.
     # om.dump(location)
@@ -618,7 +645,7 @@ if __name__ == '__main__':
     # dataset = om.Dataset('suffixless', parent=location)
     # dataset.data = 3.0
     # dataset.data = 'hello'
-    # print dataset.datatype
+    # print dataset.type
     # print dataset.suffix
     # print dataset.path
     # om.dump(dataset)
@@ -636,12 +663,12 @@ if __name__ == '__main__':
     # print string_to_python('bool')
 
     # group = GroupFactory('test', parent=location)
-    path = r'c:\users\marcus\om2'
+    # path = r'c:\users\marcus\om2'
     # om.write(path, True, 'parent/state')
     # om.write(path, 'There once was a boy', 'story')
     # om.write(path, 27, 'age')
     # om.write(path, 183.5, 'length')
-    om.write(path, False, 'female')
+    # om.write(path, False, 'female')
 
     # print om.read(path, 'female')
 
@@ -654,15 +681,18 @@ if __name__ == '__main__':
     # dataset.data = True
     # # dataset.data = 'string'
     # print dataset.path
-    # # print dataset.datatype
+    # # print dataset.type
     # print dataset.suffix
 
     # print omtype_from_pythonobj(True)
 
     # mylist = List('test.list')
-    # print mylist.datatype
+    # print mylist.type
 
-    location = om.Location(r'c:\users\marcus\om2')
-    group = om.Group('parent', parent=location)
-    print group.path
+    # location = om.Location(r'c:\users\marcus\om2')
+    # group = om.Group('parent', parent=location)
+    # print group.path
     # print group.isvalid
+
+    node = Node('/my/path')
+    print node
