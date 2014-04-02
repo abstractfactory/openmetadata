@@ -1,0 +1,10 @@
+*.pyc
+.*
+!.gitignore
+!.gitattributes
+*sandbox*
+$*
+*.sublime-project
+*.sublime-workspace
+Thumbs.db
+___*
