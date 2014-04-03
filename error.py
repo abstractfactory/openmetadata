@@ -1,0 +1,3 @@
+
+class Exists(BaseException):
+    pass

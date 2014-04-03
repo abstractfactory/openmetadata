@@ -1,8 +1,10 @@
 
 from openmetadata_mk2 import service
+from openmetadata_mk2 import error
 
 EXT = '.'
 SEP = '/'
+NTSEP = '\\'
 CONTAINER = '.meta'
 HISTORY = '.history'
 VERSIONS = '.versions'
@@ -35,7 +37,13 @@ class Node(object):
 
     @property
     def name(self):
-        return self._path.split(EXT)[0]
+        return self.basename.split(EXT)[0]
+
+    @property
+    def basename(self):
+        basename = self._path.split(SEP)[-1]
+        basename = self._path.split(NTSEP)[-1]
+        return basename
 
     @property
     def path(self):
@@ -47,7 +55,7 @@ class Node(object):
             parent = root.parent
 
             if not parent:
-                # The item has a parent attribute,
+                # The node has a parent attribute,
                 # but no parent has been set.
                 self._isvalid = False
                 break
@@ -133,10 +141,6 @@ class Location(Node):
         self._children[child.name] = child
 
     @property
-    def name(self):
-        return self._path.split(EXT)[0]
-
-    @property
     def data(self):
         return self._children.values()
 
@@ -214,7 +218,7 @@ class Blob(Node):
     @property
     def data(self):
         if self._data is None:
-            return None
+            return self.default_value
         return self.type(self._data)
 
     @data.setter
@@ -290,7 +294,7 @@ class Dataset(Blob):
 
     def __getattr__(self, metaattr):
         """Retrieve meta-metadata as per RFC15"""
-        raise NotImplementedError
+        raise NotImplementedError("Attempted to get meta-metadata from %s" % self)
 
 
 class History(Node):
@@ -309,31 +313,31 @@ Open Metadata data-types
 
 
 class Bool(Dataset):
-    pass
+    default_value = False
 
 
 class Int(Dataset):
-    pass
+    default_value = 0
 
 
 class Float(Dataset):
-    pass
+    default_value = 0.0
 
 
 class String(Dataset):
-    pass
+    default_value = ''
 
 
 class Text(Dataset):
-    pass
+    default_value = ''
 
 
 class Date(Dataset):
-    pass
+    default_value = '2014-04-03'
 
 
 class Null(Dataset):
-    pass
+    default_value = None
 
 
 class Enum(Group):
@@ -481,18 +485,18 @@ Database transation
 """
 
 
-def precheck(item):
-    if hasattr(item, 'children'):
-        for child in item:
+def precheck(node):
+    if hasattr(node, 'children'):
+        for child in node:
             precheck(child)
     else:
-        if not item.isvalid:
-            raise ValueError("%s was not valid" % item.path)
+        if not node.isvalid:
+            raise ValueError("%s was not valid" % node.path)
 
 
-def dump(item):
-    precheck(item)
-    service.dump(item)
+def dump(node):
+    precheck(node)
+    service.dump(node)
 
 
 def read(path, *metapaths):
@@ -539,7 +543,7 @@ def write(path, data, *metapaths):
     service.dump(dataset)
 
 
-def pull(item):
+def pull(node):
     """
     Main mechanism with which to read data from disk into memory.
 
@@ -550,11 +554,15 @@ def pull(item):
                 metadata and history.
 
     """
+    if not service.exists(node.path):
+        node.isdirty = False
 
-    if isinstance(item, Blob):
-        item.data = service.readfile(item.path)
+        raise error.Exists("%s does not exist" % node.path)
+
+    if isinstance(node, Blob):
+        node.data = service.readfile(node.path)
     else:
-        dirs, files = service.readdir(item.path)
+        dirs, files = service.readdir(node.path)
 
         for dir_ in dirs:
             if dir_ == HISTORY:
@@ -566,30 +574,42 @@ def pull(item):
             if dir_.startswith("."):
                 continue
 
-            GroupFactory(dir_, parent=item)
+            GroupFactory(dir_, parent=node)
 
         for file_ in files:
             if file_.startswith("."):
                 continue
 
-            DatasetFactory(file_, parent=item)
+            DatasetFactory(file_, parent=node)
 
-    item.isdirty = False
+    node.isdirty = False
 
 
-def exists(item):
-    return service.exists(item.path)
+def exists(node):
+    """Check if `node` exists under any suffix"""
+    existing = []
+    dirs_, files_ = service.readdir(node.parent.path)
+    for entry in dirs_ + files_:
+        existing.append(entry.split(".")[0])
+
+    return node.name in existing
+
+
+def remove(node):
+    return service.remove(node.path)
 
 
 if __name__ == '__main__':
     import openmetadata_mk2 as om
 
     # Starting-point
-    # location = om.Location(r'C:\Users\marcus\om2')
+    location = om.Location(r'C:\Users\marcus\om2')
+    print location.name
 
     # # Add a regular string
-    # ostring = om.Dataset('simple_data.string', parent=location)
+    ostring = om.Dataset('simple_data.string', parent=location)
     # ostring.data = 'my simple string'
+    print om.exists(ostring)
 
     # Add text
     # text = om.Dataset('story.text', parent=location)
@@ -672,9 +692,9 @@ if __name__ == '__main__':
 
     # print om.read(path, 'female')
 
-    # for item in om.read(path):
-    #     data = om.read(path, item.name)
-    #     print "%s = %s <'%s'>" % (item.name, data, type(data).__name__)
+    # for node in om.read(path):
+    #     data = om.read(path, node.name)
+    #     print "%s = %s <'%s'>" % (node.name, data, type(data).__name__)
 
     # print om.read(path)
     # assert not om.exists(dataset)
@@ -694,5 +714,6 @@ if __name__ == '__main__':
     # print group.path
     # print group.isvalid
 
-    node = Node('/my/path')
-    print node
+    # node = Node('/my/path')
+    # print node.name
+    # print node

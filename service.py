@@ -1,6 +1,8 @@
 """service.py is responsible for interacting with the operating system"""
 
 import os
+import shutil
+import time
 
 
 def suffix(path):
@@ -9,6 +11,32 @@ def suffix(path):
 
 def exists(path):
     return os.path.exists(path)
+
+
+def remove(path):
+    if exists(path):
+        dirname = os.path.dirname(path)
+        basename = os.path.basename(path)
+        trash = os.path.join(dirname, '.trash')
+
+        if not os.path.exists(trash):
+            os.mkdir(trash)
+
+        deleted_time = time.strftime("%Y%m%d%H%M%S", time.gmtime())
+        deleted_basename = "%s&%s" % (basename, deleted_time)
+        deleted_path = os.path.join(trash, deleted_basename)
+
+        try:
+            shutil.move(path, deleted_path)
+        except WindowsError:
+            raise
+
+        print "Successfully removed %s" % path
+
+    else:
+        print "%s did not exist" % path
+
+    return True
 
 
 def load(path):
@@ -35,17 +63,18 @@ def readfile(path):
     return data
 
 
-def commit(item):
-    """Temporarily store `item` on the local hard-drive"""
+def commit(node):
+    """Temporarily store `node` on the local hard-drive"""
     pass
 
 
-def dump(item):
-    if hasattr(item, 'children'):
-        for child in item:
+def dump(node):
+    if hasattr(node, 'children'):
+        os.makedirs(node.path)
+        for child in node:
             dump(child)
     else:
-        dataset = item
+        dataset = node
 
         path = dataset.path
         directory, file_ = os.path.split(path)
@@ -58,19 +87,20 @@ def dump(item):
         print "Successfully wrote: %s" % path
 
 
-def dumps(item):
+def dumps(node):
     root = {}
 
-    if hasattr(item, 'children'):
-        for child in item:
+    if hasattr(node, 'children'):
+        for child in node:
             root[child.name] = dumps(child)
     else:
-        root = item.data
+        root = node.data
 
     return root
 
 
 join = os.path.join
+
 
 
 if __name__ == '__main__':

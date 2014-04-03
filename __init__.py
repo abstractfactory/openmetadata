@@ -1,6 +1,8 @@
 """Open Metadata API"""
-import lib
-import service
+
+from . import lib
+from . import error
+from . import service
 
 Node = lib.Node
 Location = lib.Location
@@ -16,6 +18,7 @@ pull = lib.pull
 exists = lib.exists
 dump = lib.dump
 dumps = service.dumps
+remove = lib.remove
 
 listdir = read
 walk = lambda: 'whoot'
