@@ -1,12 +1,38 @@
+import logging
 
-from openmetadata_mk2 import lib
-from openmetadata_mk2 import error
-from openmetadata_mk2 import service
-from openmetadata_mk2.version import *
+from openmetadata import error
+from openmetadata.api import *
+from openmetadata.version import *
+
+
+def get_formatter():
+    formatter = logging.Formatter(
+        '%(asctime)s - '
+        '%(levelname)s - '
+        '%(name)s - '
+        '%(message)s',
+        '%Y-%m-%d %H:%M:%S')
+    return formatter
+
+
+def setup_log(root):
+    log = logging.getLogger(root)
+    # log.setLevel(logging.DEBUG)
+    log.setLevel(logging.INFO)
+    # log.setLevel(logging.WARNING)
+
+    formatter = get_formatter()
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    log.addHandler(stream_handler)
+
+    return log
+
+setup_log('openmetadata')
 
 """
 Usage
-    >>> import openmetadata_mk2 as om
+    >>> import openmetadata as om
     >>> om.version
     '0.1.0'
     >>> om.version_info
@@ -15,36 +41,6 @@ Usage
     False
 
 """
-
-# API
-
-Node = lib.Node
-Location = lib.Location
-Group = lib.GroupFactory
-Dataset = lib.DatasetFactory
-
-# load = service.load
-# loads = service.loads
-read = lib.read
-write = lib.write
-pull = lib.pull
-# commit = service.commit
-exists = lib.exists
-dump = lib.dump
-dumps = service.dumps
-remove = lib.remove
-
-listdir = read
-walk = lambda: 'whoot'
-
-
-def isdataset(item):
-    return True if isinstance(item, lib.Dataset) else False
-
-
-def isgroup(item):
-    return True if isinstance(item, lib.Group) else False
-
 
 if __name__ == '__main__':
     import doctest

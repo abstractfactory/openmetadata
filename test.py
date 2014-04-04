@@ -1,5 +1,5 @@
 
-import openmetadata_mk2 as om
+import openmetadata as om
 from nose.tools import assert_true
 
 

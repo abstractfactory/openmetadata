@@ -1,13 +1,16 @@
+import logging
 
-from openmetadata_mk2 import service
-from openmetadata_mk2 import error
+from openmetadata import service
 
-EXT = '.'
-SEP = '/'
-NTSEP = '\\'
+# EXT = '.'
+DIV = '&'
+SEP = service.SEP
 CONTAINER = '.meta'
 HISTORY = '.history'
 VERSIONS = '.versions'
+TRASH = '.trash'
+
+LOG = logging.getLogger('openmetadata.lib')
 
 
 class Node(object):
@@ -22,6 +25,8 @@ class Node(object):
     A node represents an entry in a database
 
     """
+
+    EXT = '.'
 
     def __str__(self):
         return self.name
@@ -45,37 +50,39 @@ class Node(object):
 
     def __init__(self, path):
         self._path = path
-        self._suffix = None
-        self._type = None
+        self._type = None  # cache
+        self._suffix = None  # cache
         self._isvalid = None
 
     @property
     def name(self):
-        return self.basename.split(EXT)[0]
+        return self.basename.split(self.EXT)[0] or self.basename
 
     @property
     def basename(self):
         basename = self._path.split(SEP)[-1]
-        basename = self._path.split(NTSEP)[-1]
+
+        if not self.EXT in basename:
+            # basename doesn't contain a suffix
+            suffix = (self.EXT + self.suffix) if self.suffix else ''
+            basename += suffix
+
         return basename
 
     @property
     def path(self):
-        suffix = ("." + self.suffix) if self.suffix else ''
-        path = self.name + suffix
+        path = self.basename
 
-        root = self
-        while hasattr(root, 'parent'):
-            parent = root.parent
+        if hasattr(self, 'parent'):
+            parent = self.parent
 
             if not parent:
                 # The node has a parent attribute,
                 # but no parent has been set.
                 self._isvalid = False
-                break
+                return path
 
-            path = service.join(parent.path, path)
-            root = parent
+            path = SEP.join([parent.path, path])
             self._isvalid = True
 
         return path
@@ -108,7 +115,7 @@ class Node(object):
         """
 
         if not self._suffix:
-            self._suffix = (self._path.split(EXT) + [None])[1]
+            self._suffix = (self._path.split(self.EXT) + [None])[1]
 
         return self._suffix
 
@@ -118,6 +125,10 @@ class Node(object):
             # Refresh path to ensure it is valid
             getattr(self, 'path')
         return self._isvalid
+
+    @property
+    def hasdata(self):
+        return True if getattr(self, 'data', None) else False
 
 
 class Location(Node):
@@ -136,6 +147,8 @@ class Location(Node):
 
     """
 
+    LOG = logging.getLogger('openmetadata.lib.Location')
+
     def __iter__(self):
         for child in self.children:
             yield child
@@ -151,7 +164,7 @@ class Location(Node):
 
     def add(self, child):
         if child.name in self._children:
-            print "WARNING: %s was overwritten" % child.name
+            self.LOG.info("WARNING: %s was overwritten" % child.name)
         self._children[child.name] = child
 
     @property
@@ -160,11 +173,15 @@ class Location(Node):
 
     @property
     def path(self):
-        return service.join(self._path, CONTAINER)
+        return SEP.join([self._path, CONTAINER])
 
     @property
     def children(self):
         return self._children.values()
+
+    @property
+    def children_as_dict(self):
+        return self._children
 
 
 class Group(Node):
@@ -180,6 +197,8 @@ class Group(Node):
 
     """
 
+    LOG = logging.getLogger('openmetadata.lib.Group')
+
     def __iter__(self):
         for child in self.children:
             yield child
@@ -187,8 +206,6 @@ class Group(Node):
     def __init__(self, path, parent=None):
         super(Group, self).__init__(path)
         self._children = {}
-        self._suffix = None
-        self._type = None
         self.parent = parent
 
         if parent:
@@ -196,7 +213,7 @@ class Group(Node):
 
     def add(self, child):
         if child.name in self._children:
-            print "WARNING: %s was overwritten" % child.name
+            self.LOG.info("WARNING: %s was overwritten" % child.name)
         self._children[child.name] = child
 
     @property
@@ -206,6 +223,10 @@ class Group(Node):
     @property
     def children(self):
         return self._children.values()
+
+    @property
+    def children_as_dict(self):
+        return self._children
 
 
 class Blob(Node):
@@ -222,8 +243,6 @@ class Blob(Node):
     def __init__(self, path, data=None, parent=None):
         super(Blob, self).__init__(path)
         self._data = None
-        self._type = None  # cache
-        self._suffix = None  # cache
         self.parent = parent
 
         # Toggled by om.pull and setattr(self.data)
@@ -323,12 +342,92 @@ class Dataset(Blob):
                                   "meta-metadata from %s" % self)
 
 
-class History(Node):
+class History(Group):
     pass
 
 
-class Versions(Node):
+class Versions(Group):
     pass
+
+
+class Imprint(Node):
+    def __str__(self):
+        """This is used when comparing with other objects"""
+        return self.original_name
+
+    def __init__(self, path, data=None, parent=None):
+        super(Imprint, self).__init__(path)
+        self._data = None
+        self._time = None
+        self.parent = parent
+
+        if data is not None:
+            self.data = data
+
+        if parent:
+            parent.add(self)
+
+    @property
+    def name(self):
+        """
+        In the case of imprints, keep full name, since we want
+        to enable multiple names to exist within history.
+
+        E.g.
+            some data.string&date1
+            some data.string&date2
+
+        If just the name is kept, only one of these would
+        be retrievable since children are stored in a
+        dictionary using their name for keys.
+
+        """
+        return self.basename
+
+    @property
+    def original_name(self):
+        return self.basename.split(self.EXT)[0]
+
+    @property
+    def original_suffix(self):
+        name, date = self._path.rsplit(DIV)
+        return name.split(self.EXT)[-1]
+
+    @property
+    def original_basename(self):
+        original_basename = self.original_name
+        original_basename += self.EXT
+        original_basename += self.original_suffix
+        return original_basename
+
+    @property
+    def time(self):
+        """
+        Return tuple of recorded time.
+
+        Example
+            >>> imprint = Imprint('name&20140404-105421')
+            >>> imprint.time > (2013,)
+            True
+            >>> imprint.time > (2015,)
+            False
+        """
+
+        if not self._time:
+
+            date = self._path.rsplit(DIV)[-1]
+            year = int(date[:4])
+            month = int(date[4:6])
+            day = int(date[6:8])
+
+            time = date.rsplit("-")[-1]
+            hour = int(time[:2])
+            minute = int(time[2:4])
+            second = int(time[4:])
+
+            self._time = (year, month, day, hour, minute, second)
+
+        return self._time
 
 
 """
@@ -504,138 +603,21 @@ def register():
 register()
 
 
-"""
-
-Database transation
-
-"""
-
-
-def precheck(node):
-    if hasattr(node, 'children'):
-        for child in node:
-            precheck(child)
-    else:
-        if not node.isvalid:
-            raise ValueError("%s was not valid" % node.path)
-
-
-def dump(node):
-    precheck(node)
-    service.dump(node)
-
-
-def read(path, *metapaths):
-    """Parse information from database into Python data-types"""
-    location = Location(path)
-
-    root = location
-
-    for metapath in metapaths:
-        parts = metapath.split(SEP)
-        while parts:
-            pull(root)
-            root = root._children.get(parts.pop(0))
-
-            if not root:
-                return None
-
-    pull(root)
-    return root.data
-
-
-def write(path, data, *metapaths):
-    """
-    Convenience-method for quickly writing out `data` to `path`
-
-    """
-
-    location = Location(path)
-
-    metapaths = list(metapaths)
-    dataset = metapaths.pop()
-    groups = metapaths
-    root = location
-    for group in groups:
-        group = GroupFactory(group, parent=root)
-        root = group
-
-    # Is it a group or a dataset?
-    item_type = python_to_om(type(data))
-    # print item_type
-
-    dataset = item_type(dataset, data=data, parent=root)
-    print data
-    service.dump(dataset)
-
-
-def pull(node):
-    """
-    Main mechanism with which to read data from disk into memory.
-
-    Features
-        '.'  -- Names starting with a dot (.) are invisible
-                to regular operation and may be used by other
-                mechanisms for other purposes; such as meta-
-                metadata and history.
-
-    """
-    if not service.exists(node.path):
-        node.isdirty = False
-
-        raise error.Exists("%s does not exist" % node.path)
-
-    if isinstance(node, Blob):
-        node.data = service.readfile(node.path)
-    else:
-        dirs, files = service.readdir(node.path)
-
-        for dir_ in dirs:
-            if dir_ == HISTORY:
-                continue
-
-            if dir_ == VERSIONS:
-                continue
-
-            if dir_.startswith("."):
-                continue
-
-            GroupFactory(dir_, parent=node)
-
-        for file_ in files:
-            if file_.startswith("."):
-                continue
-
-            DatasetFactory(file_, parent=node)
-
-    node.isdirty = False
-
-
-def exists(node):
-    """Check if `node` exists under any suffix"""
-    existing = []
-    dirs_, files_ = service.readdir(node.parent.path)
-    for entry in dirs_ + files_:
-        existing.append(entry.split(".")[0])
-
-    return node.name in existing
-
-
-def remove(node):
-    return service.remove(node.path)
-
-
 if __name__ == '__main__':
-    import openmetadata_mk2 as om
+    import doctest
+    doctest.testmod()
+
+    import openmetadata as om
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
     print location.name
 
     # # Add a regular string
-    ostring = om.Dataset('simple_data.string', parent=location)
-    # ostring.data = 'my simple string'
-    print om.exists(ostring)
+    ostring = om.Dataset('simple_data', parent=location)
+    ostring.data = 'my simple string'
+    # print om.exists(ostring)
+    print ostring.basename
 
     # Add text
     # text = om.Dataset('story.text', parent=location)

@@ -1,8 +1,9 @@
-"""service.py is responsible for interacting with the operating system"""
+"""File-system services"""
 
 import os
 import shutil
-import time
+
+SEP = os.sep
 
 
 def suffix(path):
@@ -14,37 +15,43 @@ def exists(path):
 
 
 def remove(path):
-    if exists(path):
-        dirname = os.path.dirname(path)
-        basename = os.path.basename(path)
-        trash = os.path.join(dirname, '.trash')
+    """
+    Remove `path`, regardless of it being a file or folder.
 
-        if not os.path.exists(trash):
-            os.mkdir(trash)
+    """
 
-        deleted_time = time.strftime("%Y%m%d%H%M%S", time.gmtime())
-        deleted_basename = "%s&%s" % (basename, deleted_time)
-        deleted_path = os.path.join(trash, deleted_basename)
-
-        try:
-            shutil.move(path, deleted_path)
-        except WindowsError:
-            raise
-
-        print "Successfully removed %s" % path
-
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    elif os.path.isfile(path):
+        os.remove(path)
     else:
-        print "%s did not exist" % path
-
-    return True
+        raise TypeError("This should never happen")
 
 
-def load(path):
-    """Retrieve locally-stored data"""
+def move(source, target):
+    """
+    Move `source` to `target`, creating missing
+    parts of the hierarchy is required.
+
+    """
+
+    dirname = os.path.dirname(target)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    shutil.move(source, target)
 
 
-# def loads(path):
-#     """Retrieve data from memory"""
+def copy(source, target):
+    """
+    Move `source` to `target`, creating missing
+    parts of the hierarchy is required.
+
+    """
+
+    dirname = os.path.dirname(target)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    shutil.copy2(source, target)
 
 
 def push():
@@ -68,38 +75,15 @@ def commit(node):
     pass
 
 
-def dump(node):
-    if hasattr(node, 'children'):
-        os.makedirs(node.path)
-        for child in node:
-            dump(child)
-    else:
-        dataset = node
+def dump(path, data):
+    dirname = os.path.dirname(path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
 
-        path = dataset.path
-        directory, file_ = os.path.split(path)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+    with open(path, 'w') as f:
+        f.write(data)
 
-        with open(path, 'w') as f:
-            f.write(dataset.dump())
-
-        print "Successfully wrote: %s" % path
-
-
-def dumps(node):
-    root = {}
-
-    if hasattr(node, 'children'):
-        for child in node:
-            root[child.name] = dumps(child)
-    else:
-        root = node.data
-
-    return root
-
-
-join = os.path.join
+    return True
 
 
 

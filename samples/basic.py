@@ -1,4 +1,4 @@
-import openmetadata_mk2 as om
+import openmetadata as om
 
 # Starting-point
 path = r'C:\Users\marcus\om2'

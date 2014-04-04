@@ -1,4 +1,4 @@
-import openmetadata_mk2 as om
+import openmetadata as om
 
 path = r'c:\users\marcus\om2'
 om.write(path, True, 'status')
