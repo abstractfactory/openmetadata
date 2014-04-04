@@ -375,11 +375,9 @@ def history(node):
     if not node.hasdata:
         pull(history_node)
 
-    history = []
     for imprint in history_node.children:
         if imprint == node:
-            history.append(imprint)
-    return history
+            yield imprint
 
 
 def exists(node):

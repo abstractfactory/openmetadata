@@ -47,5 +47,5 @@ def no_concatenation():
 
 """
 Q: How do I traverse a hierarchy?
-A:
+A: 
 """
