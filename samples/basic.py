@@ -27,7 +27,7 @@ key1 = om.Dataset('key1.string', data='value', parent=odict)
 key2 = om.Dataset('key2', data='value', parent=odict)
 
 # Finally, write it to disk.
-om.dump(location)
+# om.dump(location)
 
 
 # ----------- Read it back in

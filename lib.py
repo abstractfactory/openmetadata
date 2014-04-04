@@ -19,15 +19,29 @@ class Node(object):
     |            |
     |____________|
 
-    Node represents a physical folder on disk.
+    A node represents an entry in a database
 
     """
 
     def __str__(self):
-        return self._path
+        return self.name
 
     def __repr__(self):
         return u"%s(%r)" % (self.__class__.__name__, self.__str__())
+
+    def __eq__(self, other):
+        """
+        Nodes all have unique names.
+        If a name is not unique, there is a bug.
+
+        """
+        return str(other) == str(self)
+
+    def __ne__(self, other):
+        return str(other) != str(self)
+
+    def __hash__(self):
+        return hash(str(self))
 
     def __init__(self, path):
         self._path = path
@@ -118,7 +132,7 @@ class Location(Node):
     |   |   |   |    |
     |   |   +-- |____|
 
-    A physical existing location
+    An existing location, capable of hosting metadata.
 
     """
 
@@ -154,6 +168,17 @@ class Location(Node):
 
 
 class Group(Node):
+    """
+     ____
+    |    |_______
+    |            |
+    |     om     |
+    |            |
+    |____________|
+
+    A container of additional groups and datasets.
+
+    """
 
     def __iter__(self):
         for child in self.children:
@@ -294,7 +319,8 @@ class Dataset(Blob):
 
     def __getattr__(self, metaattr):
         """Retrieve meta-metadata as per RFC15"""
-        raise NotImplementedError("Attempted to get meta-metadata from %s" % self)
+        raise NotImplementedError("Attempted to get "
+                                  "meta-metadata from %s" % self)
 
 
 class History(Node):

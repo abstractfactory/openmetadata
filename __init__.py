@@ -1,8 +1,22 @@
-"""Open Metadata API"""
 
-from . import lib
-from . import error
-from . import service
+from openmetadata_mk2 import lib
+from openmetadata_mk2 import error
+from openmetadata_mk2 import service
+from openmetadata_mk2.version import *
+
+"""
+Usage
+    >>> import openmetadata_mk2 as om
+    >>> om.version
+    '0.1.0'
+    >>> om.version_info
+    (0, 1, 0)
+    >>> om.version_info > (0, 2, 0)
+    False
+
+"""
+
+# API
 
 Node = lib.Node
 Location = lib.Location
@@ -30,3 +44,8 @@ def isdataset(item):
 
 def isgroup(item):
     return True if isinstance(item, lib.Group) else False
+
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
