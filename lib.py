@@ -464,7 +464,7 @@ class Text(Dataset):
 
 
 class Date(Dataset):
-    default_value = '2014-04-03'
+    default_value = '20140403-163621'
 
 
 class Null(Dataset):

@@ -1,5 +1,6 @@
 import logging
 
+from openmetadata import lib
 from openmetadata import error
 from openmetadata.api import *
 from openmetadata.version import *

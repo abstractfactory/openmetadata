@@ -154,17 +154,18 @@ def read(path, *metapaths):
                 return None
 
     pull(root)
+    return root.data
 
-    nodes = []
-    for node in root:
+    # nodes = []
+    # for node in root:
 
-        # Skip instances of History
-        if isinstance(node, lib.History):
-            continue
+    #     # Skip instances of History
+    #     if isinstance(node, lib.History):
+    #         continue
 
-        nodes.append(node)
+    #     nodes.append(node)
 
-    return nodes
+    # return nodes
 
 
 def read_as_dict(path, *metapaths):
@@ -442,6 +443,7 @@ __all__ = [
     'listdir',
     'isdataset',
     'isgroup',
+    'ishistory',
     'isimprint',
     'read_as_dict'
 ]

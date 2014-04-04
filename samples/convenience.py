@@ -1,6 +1,13 @@
+import os
 import openmetadata as om
 
-path = r'c:\users\marcus\om2'
+# Starting-point
+userpath = os.path.expanduser('~')
+path = os.path.join(userpath, 'om_temp')
+
+if not os.path.exists(path):
+    os.mkdir(path)
+
 om.write(path, True, 'status')
 om.write(path, 'There once was a boy', 'story')
 om.write(path, 27, 'age')
