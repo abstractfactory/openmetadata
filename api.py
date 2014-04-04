@@ -1,6 +1,9 @@
 """
+-----------------------------------------------------------------------
 
 Open Metadata API
+
+-----------------------------------------------------------------------
 
 Description
     pass
@@ -18,8 +21,8 @@ Functionality
     isgroup         -- Self-explanatory convenience method
 
 Note
-    This isn't to be used directly, all funcionality is imported
-    by the main 'openmetadata' module.
+    This module isn't to be used directly, all funcionality is
+    imported by the main 'openmetadata' module.
 
 """
 
@@ -37,7 +40,7 @@ LOG = logging.getLogger('openmetadata.api')
 
 """
 
-Node        -- Superclass of below objects, do not directly instantiate
+Node        -- Superclass of below objects
 Location    -- Represents physical entry in database
 Group       -- Container of Group and/or Dataset nodes
 Dataset     -- Main vessel of data
@@ -149,14 +152,22 @@ def read(path, *metapaths):
                 return None
 
     pull(root)
-    return root.data
+
+    nodes = []
+    for node in root:
+
+        # Skip instances of History
+        if isinstance(node, lib.History):
+            continue
+
+        nodes.append(node)
+
+    return nodes
 
 
 def read_as_dict(path, *metapaths):
-    data = read(path, *metapaths)
-
     result = {}
-    for node in data:
+    for node in read(path, *metapaths):
         result[node.name] = node
 
     return result
@@ -165,6 +176,9 @@ def read_as_dict(path, *metapaths):
 def write(path, data, *metapaths):
     """
     Convenience-method for quickly writing out `data` to `path`
+
+    Example
+        >> om.write(r'c:\users\marcus', 'Hello there', 'introduction')
 
     """
 
@@ -244,7 +258,11 @@ def pull(node):
         |            |
         |____________|
 
-        Groups may contain both Groups and Datasets
+        Containers may contain:
+            o Groups
+            o Datasets
+            o History
+            o Versions
 
         """
 
@@ -275,16 +293,6 @@ def pull(node):
         raise TypeError("Can't pull %r" % node)
 
     node.isdirty = False
-
-
-def exists(node):
-    """Check if `node` exists under any suffix"""
-    existing = []
-    dirs_, files_ = service.readdir(node.parent.path)
-    for entry in dirs_ + files_:
-        existing.append(entry.split(".")[0])
-
-    return node.name in existing
 
 
 def remove(node, permanent=False):
@@ -369,6 +377,19 @@ def history(node):
     return history
 
 
+def exists(node):
+    """Check if `node` exists under any suffix"""
+    if isinstance(node, lib.Imprint):
+        return service.exists(node.path)
+
+    existing = []
+    dirs_, files_ = service.readdir(node.parent.path)
+    for entry in dirs_ + files_:
+        existing.append(entry.split(".")[0])
+
+    return node.name in existing
+
+
 def isdataset(node):
     return True if isinstance(node, lib.Dataset) else False
 
@@ -424,7 +445,8 @@ if __name__ == '__main__':
     history_ = om.read_as_dict(path).get('.history')
     om.pull(history_)
     imprint = history_.children[0]
-    # print repr(imprint)
+    # print om.exists(imprint)
+    print repr(imprint)
     om.restore(imprint)
     # print history.path
     # print history.name

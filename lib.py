@@ -1,3 +1,4 @@
+import abc
 import logging
 
 from openmetadata import service
@@ -26,6 +27,8 @@ class Node(object):
 
     """
 
+    __metaclass__ = abc.ABCMeta
+
     EXT = '.'
 
     def __str__(self):
@@ -48,6 +51,7 @@ class Node(object):
     def __hash__(self):
         return hash(str(self))
 
+    @abc.abstractmethod  # Prevent from direct instantiation
     def __init__(self, path):
         self._path = path
         self._type = None  # cache
