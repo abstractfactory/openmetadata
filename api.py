@@ -51,6 +51,8 @@ Node = lib.Node
 Location = lib.Location
 Group = lib.GroupFactory
 Dataset = lib.DatasetFactory
+Imprint = lib.Imprint
+History = lib.History
 
 
 # Functionality
@@ -313,15 +315,17 @@ def remove(node, permanent=False):
     trash = service.SEP.join([dirname, lib.TRASH])
 
     # Ensure node.name is unique in trash, as per RFC14
-    dirs, files = service.readdir(trash)
-    for trashed in dirs + files:
-        trash_name = trashed.split(node.EXT, 1)[0]
-        if node.name == trash_name:
-            # An existing copy of this node is
-            # already in the trash. Permanently remove it.
-            LOG.info("remove(): Removing exisisting %r from trash" % node.name)
-            existing_trashed_path = service.SEP.join([trash, trashed])
-            service.remove(existing_trashed_path)
+    if service.exists(trash):
+        dirs, files = service.readdir(trash)
+        for trashed in dirs + files:
+            trash_name = trashed.split(node.EXT, 1)[0]
+            if node.name == trash_name:
+                # An existing copy of this node is
+                # already in the trash. Permanently remove it.
+                LOG.info("remove(): Removing exisisting "
+                         "%r from trash" % node.name)
+                existing_trashed_path = service.SEP.join([trash, trashed])
+                service.remove(existing_trashed_path)
 
     deleted_path = service.SEP.join([trash, basename])
 
@@ -382,6 +386,9 @@ def exists(node):
     if isinstance(node, lib.Imprint):
         return service.exists(node.path)
 
+    if not service.exists(node.parent.path):
+        return False
+
     existing = []
     dirs_, files_ = service.readdir(node.parent.path)
     for entry in dirs_ + files_:
@@ -402,6 +409,10 @@ def isimprint(node):
     return True if isinstance(node, lib.Imprint) else False
 
 
+def ishistory(node):
+    return True if isinstance(node, lib.History) else False
+
+
 # Convenience wrappers
 
 
@@ -414,6 +425,8 @@ __all__ = [
     'Location',
     'Group',
     'Dataset',
+    'Imprint',
+    'History',
 
     # Main functionality
     'dump',
@@ -435,18 +448,25 @@ __all__ = [
 
 
 if __name__ == '__main__':
+    from pprint import pprint
     import openmetadata as om
     path = r'c:\users\marcus\om2'
-    age = om.read_as_dict(path).get('age')
+    location = om.Location(path)
+    om.pull(location)
+    pprint(om.dumps(location))
+    # group = om.read_as_dict(path, 'root').get('group')
+    # print group
+    # om.remove(group)
+
     # print age
     # print history(age)
     # om.pull(location)
 
-    history_ = om.read_as_dict(path).get('.history')
-    om.pull(history_)
-    imprint = history_.children[0]
-    # print om.exists(imprint)
-    print repr(imprint)
-    om.restore(imprint)
-    # print history.path
+    # history_ = om.read_as_dict(path).get('.history')
+    # om.pull(history_)
+    # imprint = history_.children[0]
+    # # print om.exists(imprint)
+    # print repr(imprint)
+    # om.restore(imprint)
+    # # print history.path
     # print history.name

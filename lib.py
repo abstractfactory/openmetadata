@@ -181,7 +181,8 @@ class Location(Node):
 
     @property
     def children(self):
-        return self._children.values()
+        for child in self._children.values():
+            yield child
 
     @property
     def children_as_dict(self):
@@ -226,7 +227,8 @@ class Group(Node):
 
     @property
     def children(self):
-        return self._children.values()
+        for child in self._children.values():
+            yield child
 
     @property
     def children_as_dict(self):
