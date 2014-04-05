@@ -1,3 +1,9 @@
+"""
+
+This module provides basic examples for working with Open Metadata
+
+"""
+
 import os
 import openmetadata as om
 
@@ -32,7 +38,7 @@ key1 = om.Dataset('key1.string', data='value', parent=odict)
 key2 = om.Dataset('key2', data='value', parent=odict)
 
 # Finally, write it to disk.
-# om.dump(location)
+om.dump(location)
 
 
 # ----------- Read it back in
@@ -50,7 +56,7 @@ print om.read(path, 'mylist', 'item2')
 
 # assert om.read == om.listdir
 
-# for item in om.listdir(path):
-#     print item.path
+for item in om.listdir(path):
+    print item.path
 # # --> c:\users\marcus\om2\.meta\mylist.list
 # --> c:\users\marcus\om2\.meta\simple_data.string

@@ -114,7 +114,7 @@ def _make_history(node):
     basename = node.basename
     repository_path = SEP.join([parent.path, lib.HISTORY])
 
-    history_time = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+    history_time = service.currenttime()
     history_basename = "%s&%s" % (basename, history_time)
     history_path = SEP.join([repository_path, history_basename])
 
@@ -199,7 +199,7 @@ def write(path, data, *metapaths):
     item_type = lib.python_to_om(type(data))
 
     dataset = item_type(dataset, data=data, parent=root)
-    service.dump(dataset)
+    dump(dataset)
 
 
 def pull(node):

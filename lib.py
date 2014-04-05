@@ -473,7 +473,7 @@ class Text(Dataset):
 class Date(Dataset):
     @property
     def default_value(self):
-        return service.currenttime
+        return service.currenttime()
 
 
 class Null(Dataset):

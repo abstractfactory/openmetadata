@@ -1,3 +1,15 @@
+"""
+
+This module provides answers with solutions to commonly asked questions.
+
+Have a question? Add it here and submit a pull request on github,
+someone will include an answer and it will become available to you
+and others in an upcoming patch.
+
+https://github.com/abstractfactory/openmetadata
+
+"""
+
 import os
 
 import openmetadata as om

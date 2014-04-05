@@ -1,3 +1,13 @@
+"""
+
+This module provides examples of Open Metadata convenience methods
+
+Convenience methods are provided as a means of reading and writing
+metadata where requirements in functionality and performance are low;
+such as in debugging or one-off reading/writing.
+
+"""
+
 import os
 import openmetadata as om
 
