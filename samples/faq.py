@@ -2,7 +2,11 @@ import os
 
 import openmetadata as om
 
-userpath = os.path.expanduser('~')
+path = os.path.expanduser(r'~\om_temp')
+
+# Set-up
+if not os.path.exists(path):
+    os.mkdir(path)
 
 """
 Q: Why store simple data in folders?
@@ -16,9 +20,9 @@ A: To support the notion of programmable folders. Like with programming,
 
 def why_simple_data():
     """Store data that we might need to change later"""
-    location = om.Location(userpath)
+    location = om.Location(path)
     girlfriend = om.Dataset('girlfriend', parent=location)
-    girlfriend.data = 'Some Girlsson'
+    girlfriend.data = 'Sweet Heartsson'
     om.dump(girlfriend)
 
 
@@ -32,7 +36,7 @@ A: With Open Metadata nodes, there should be very little reason to have
 
 
 def no_concatenation():
-    location = om.read(userpath)
+    location = om.read(path)
     firstchild = location.children.next()
 
     parent_dir = os.path.dirname(firstchild.path)
@@ -40,8 +44,8 @@ def no_concatenation():
 
     # As dataset expects a relative name, this won't work.
     try:
-        otherchild_node = om.Dataset(name=otherchild_path, parent=location)
-    except:
+        om.Dataset(name=otherchild_path, parent=location)
+    except om.error.RelativePath:
         print "Defeated.."
 
 

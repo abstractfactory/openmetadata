@@ -2,6 +2,7 @@ import abc
 import logging
 
 from openmetadata import service
+from openmetadata import error
 
 # EXT = '.'
 DIV = '&'
@@ -39,7 +40,7 @@ class Node(object):
 
     def __eq__(self, other):
         """
-        Nodes all have unique names.
+        Nodes within a single parent all have unique names.
         If a name is not unique, there is a bug.
 
         """
@@ -136,7 +137,16 @@ class Node(object):
 
 
 class TreeNode(Node):
-    pass
+
+    @property
+    def children(self):
+        for child in self._children.values():
+            yield child
+
+    @property
+    def children_as_dict(self):
+        return self._children
+
 
 class Location(TreeNode):
     """
@@ -162,6 +172,10 @@ class Location(TreeNode):
 
     def __init__(self, path):
         super(Location, self).__init__(path)
+
+        if not service.isabsolute(path):
+            raise error.RelativePath('Path must be absolute: %s' % path)
+
         assert service.exists(path)
         self._children = {}
 
@@ -181,15 +195,6 @@ class Location(TreeNode):
     @property
     def path(self):
         return SEP.join([self._path, CONTAINER])
-
-    @property
-    def children(self):
-        for child in self._children.values():
-            yield child
-
-    @property
-    def children_as_dict(self):
-        return self._children
 
 
 class Group(TreeNode):
@@ -213,6 +218,10 @@ class Group(TreeNode):
 
     def __init__(self, path, parent=None):
         super(Group, self).__init__(path)
+
+        if service.isabsolute(path):
+            raise error.RelativePath('Path must be relative: %s' % path)
+
         self._children = {}
         self.parent = parent
 
@@ -228,15 +237,6 @@ class Group(TreeNode):
     def data(self):
         return self._children.values()
 
-    @property
-    def children(self):
-        for child in self._children.values():
-            yield child
-
-    @property
-    def children_as_dict(self):
-        return self._children
-
 
 class Blob(Node):
     """
@@ -251,6 +251,10 @@ class Blob(Node):
 
     def __init__(self, path, data=None, parent=None):
         super(Blob, self).__init__(path)
+
+        if service.isabsolute(path):
+            raise error.RelativePath('Path must be relative: %s' % path)
+
         self._data = None
         self.parent = parent
 
@@ -467,7 +471,9 @@ class Text(Dataset):
 
 
 class Date(Dataset):
-    default_value = '20140403-163621'
+    @property
+    def default_value(self):
+        return service.currenttime
 
 
 class Null(Dataset):

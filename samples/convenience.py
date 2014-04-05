@@ -2,8 +2,7 @@ import os
 import openmetadata as om
 
 # Starting-point
-userpath = os.path.expanduser('~')
-path = os.path.join(userpath, 'om_temp')
+path = os.path.expanduser(r'~\om_temp')
 
 if not os.path.exists(path):
     os.mkdir(path)

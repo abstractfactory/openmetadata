@@ -1,9 +1,18 @@
 """File-system services"""
 
 import os
+import time
 import shutil
 
 SEP = os.sep
+
+
+def isabsolute(path):
+    return os.path.isabs(path)
+
+
+def currenttime():
+    return time.strftime("%Y%m%d-%H%M%S", time.gmtime())
 
 
 def suffix(path):
@@ -25,7 +34,7 @@ def remove(path):
     elif os.path.isfile(path):
         os.remove(path)
     else:
-        raise TypeError("This should never happen")
+        raise TypeError("%s is not a valid path" % path)
 
 
 def move(source, target):

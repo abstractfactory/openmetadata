@@ -12,3 +12,6 @@ In development, see specifications here:
 * [Meta Open Metadata](http://rfc.abstractfactory.io/spec/15)
 * [Open Metadata Blob](http://rfc.abstractfactory.io/spec/16)
 * [Cross-referencing Metadata](http://rfc.abstractfactory.io/spec/17)
+* [Open Metadata Types](http://rfc.abstractfactory.io/spec/18)
+* [Storage Agnostic Metadata](http://rfc.abstractfactory.io/spec/19)
+* [Mirrored Metadata](http://rfc.abstractfactory.io/spec/20)
