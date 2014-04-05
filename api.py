@@ -12,6 +12,8 @@ Functionality
     dump            -- Main mechanism with which to write to database
     pull            -- Main mechanism with which to read from database
     remove          -- Main mechanism with which to remove from database
+    history         -- Main mechanism for retrieving history from datasets
+    metadata        -- Convenience method for retrieving metadata objects
     read            -- Convenience method for reading metadata
     read_as_dict    -- Convenience method of `read`, returns dict
     write           -- Convenience method for writing metadata
@@ -22,11 +24,15 @@ Functionality
 
 Note
     This module isn't to be used directly, all funcionality is
-    imported by the main 'openmetadata' module.
+    imported by the __init__.py of 'openmetadata' and retreivable
+    via the module directly.
+
+    Example
+        >> import openmetadata as om
+        >> om.read('/home/marcus')
 
 """
 
-import time
 import logging
 
 from openmetadata import lib
@@ -138,8 +144,7 @@ def dumps(node):
     return root
 
 
-def read(path, *metapaths):
-    """Parse information from database into Python data-types"""
+def metadata(path, *metapaths):
     location = lib.Location(path)
 
     root = location
@@ -153,19 +158,13 @@ def read(path, *metapaths):
             if not root:
                 return None
 
-    pull(root)
-    return root.data
+    return root
 
-    # nodes = []
-    # for node in root:
 
-    #     # Skip instances of History
-    #     if isinstance(node, lib.History):
-    #         continue
-
-    #     nodes.append(node)
-
-    # return nodes
+def read(path, *metapaths):
+    """Parse information from database into Python data-types"""
+    root = metadata(path, *metapaths)
+    return pull(root).data
 
 
 def read_as_dict(path, *metapaths):
@@ -297,6 +296,8 @@ def pull(node):
 
     node.isdirty = False
 
+    return node
+
 
 def remove(node, permanent=False):
     """Remove `node` from database, either to trash or permanently"""
@@ -370,12 +371,18 @@ def restore(imprint):
 
 def history(node):
     """Return history of `node`"""
-    history_node = node.parent.children_as_dict.get('.history')
+    parent = node.parent
+    pull(parent)
 
-    if not node.hasdata:
+    history_node = parent.children_as_dict.get('.history')
+
+    if not history_node.hasdata:
         pull(history_node)
 
-    for imprint in history_node.children:
+    imprints = [imp for imp in history_node]
+    imprints = sorted(imprints, reverse=True)
+
+    for imprint in imprints:
         if imprint == node:
             yield imprint
 
@@ -428,6 +435,7 @@ __all__ = [
     'History',
 
     # Main functionality
+    'metadata',
     'dump',
     'dumps',
     'read',
@@ -436,6 +444,7 @@ __all__ = [
     'exists',
     'restore',
     'remove',
+    'history',
 
     # Convenience functionality
     'listdir',

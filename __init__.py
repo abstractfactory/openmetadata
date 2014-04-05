@@ -19,8 +19,8 @@ def get_formatter():
 def setup_log(root):
     log = logging.getLogger(root)
     # log.setLevel(logging.DEBUG)
-    log.setLevel(logging.INFO)
-    # log.setLevel(logging.WARNING)
+    # log.setLevel(logging.INFO)
+    log.setLevel(logging.WARNING)
 
     formatter = get_formatter()
     stream_handler = logging.StreamHandler()
@@ -29,7 +29,7 @@ def setup_log(root):
 
     return log
 
-setup_log('openmetadata')
+log = setup_log('openmetadata')
 
 """
 Usage
