@@ -135,7 +135,10 @@ class Node(object):
         return True if getattr(self, 'data', None) else False
 
 
-class Location(Node):
+class TreeNode(Node):
+    pass
+
+class Location(TreeNode):
     """
     .    ____
     |   |    |
@@ -189,7 +192,7 @@ class Location(Node):
         return self._children
 
 
-class Group(Node):
+class Group(TreeNode):
     """
      ____
     |    |_______
