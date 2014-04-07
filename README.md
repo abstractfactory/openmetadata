@@ -8,7 +8,7 @@ Open Metadata is designed for programmers and scripters for use in data-oriented
 ```python
 # Simplest use-case
 >>> import openmetadata as om
->>> om.write('/home/marcus', 'age', 27)
+>>> om.write('/home/marcus', 27, 'age')
 >>> om.read('/home/marcus', 'age')
 27
 
