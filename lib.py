@@ -277,13 +277,9 @@ class Blob(Node):
         self._data = None
         self.parent = parent
 
-        # Toggled by om.pull and setattr(self.data)
-        # Newly created nodes are clean until data
-        # has been set.
-        #
-        # This is so that newly created nodes
-        # without data won't get written to disk.
-        self.isdirty = False
+        # Nodes are dirty until they are pulled, and
+        # made dirty again via setattr(self.data)
+        self.isdirty = True
 
         if data is not None:
             self.data = data

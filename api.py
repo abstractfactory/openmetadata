@@ -9,18 +9,38 @@ Description
     pass
 
 Functionality
+
+    Main
+    ----
+
     dump            -- Main mechanism with which to write to database
     pull            -- Main mechanism with which to read from database
     remove          -- Main mechanism with which to remove from database
-    history         -- Main mechanism for retrieving history from datasets
+
+    Temporal
+    --------
+
+    history         -- Returns generator of available history
+    restore         -- Restores node from history
+    save            -- Saves node as new version
+    version         -- Retrieves saved version
+    versions        -- Returns generator of available versions
+
+    Convenience
+    -----------
+
     metadata        -- Convenience method for retrieving metadata objects
     read            -- Convenience method for reading metadata
     read_as_dict    -- Convenience method of `read`, returns dict
+    lazy_pull       -- Pulls only if not previously pulled
     write           -- Convenience method for writing metadata
     exists          -- Does a node exist?
     dumps           -- Simulates `dump` and returns dict
+
     isdataset       -- Self-explanatory convenience method
     isgroup         -- Self-explanatory convenience method
+    ishistory       -- Self-explanatory convenience method
+    isimprint       -- Self-explanatory convenience method
 
 Note
     This module isn't to be used directly, all funcionality is
@@ -308,7 +328,7 @@ def versions(node):
 
     lazy_pull(versions_node)
 
-    # TODO: potential bottle-neck
+    # TODO: potential bottleneck
     versions = [ver for ver in versions_node]
     versions = sorted(versions, reverse=True)
 
@@ -337,7 +357,7 @@ def history(node):
 
     lazy_pull(history_node)
 
-    # TODO: potential bottle-neck
+    # TODO: potential bottleneck
     imprints = [imp for imp in history_node]
     imprints = sorted(imprints, reverse=True)
 
