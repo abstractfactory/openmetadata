@@ -60,6 +60,11 @@ class Node(object):
         self._isvalid = None
 
     @property
+    def location(self):
+        path = self.path.split(CONTAINER, 1)[0]
+        return Location(path)
+
+    @property
     def name(self):
         return self.basename.split(self.EXT)[0] or self.basename
 

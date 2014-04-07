@@ -346,7 +346,7 @@ def history(node):
             yield imprint
 
 
-def restore(imprint):
+def restore(imprint, keephistory=False):
     """Restore `imprint` to target from history"""
     assert isinstance(imprint, lib.Imprint)
     LOG.info("restore(): Restoring %r" % imprint.path)
@@ -364,17 +364,21 @@ def restore(imprint):
 
     # Update target with historical data
     previous_value = imprint.children_as_dict.get('value')
+    current_value = target.data
     target.data = pull(previous_value).data
 
     dump(target, nohistory=True)
 
     # Remove history
-    for old_imprint in history(target):
-        if old_imprint.time >= imprint.time:
-            LOG.info("restore(): Removing old history: %r" % old_imprint.path)
-            remove(old_imprint, permanent=True)
+    if not keephistory:
+        for old_imprint in history(target):
+            if old_imprint.time >= imprint.time:
+                LOG.info("restore(): Removing old history: %r"
+                         % old_imprint.path)
+                remove(old_imprint, permanent=True)
 
-    LOG.info("restore(): Restoring %r to %r" % (imprint.path, target.path))
+    LOG.info("restore(): Restoring %r(%r) to %r(%r)" %
+             (imprint.path, current_value, target.path, target.data))
 
 
 def _make_history(node):
@@ -393,17 +397,23 @@ def _make_history(node):
     imprint_time = service.currenttime()
     imprint_name = "%s&%s" % (basename, imprint_time)
 
+    # Get previous value
+    current_value = node.data
+    previous_value = pull(node).data
+    node.data = current_value
+
     # Construct history group
     history = Group(lib.HISTORY, parent=parent)
     imprint = Imprint(imprint_name, parent=history)
     Dataset('user', data='marcus', parent=imprint)
-    Dataset('value', data=node.data, parent=imprint)
+    Dataset('value', data=previous_value, parent=imprint)
 
-    assert not exists(imprint)
+    assert not service.exists(imprint.path), "%s already exists" % imprint.path
 
     dump(history)
 
-    LOG.info("_make_history(): Successfully made history for %s" % node.path)
+    LOG.info("_make_history(): Successfully made history for %s (value=%s)"
+             % (node.path, node.data))
 
 
 def _make_version(node):
@@ -579,15 +589,22 @@ if __name__ == '__main__':
 
     path = r'c:\users\marcus\om2'
     age = om.metadata(path, 'age')
-    # om.pull(age)
-    # age.data = age.data + 1
-    # om.dump(age)
+    om.pull(age)
+    
+    previous = age.data
 
-    _make_version(age)
+    age.data = age.data + 1
+    om.dump(age)
+
+    # _make_version(age)
 
     # print new_imprint.time > old_imprint.time
     # print older_imprint.time > older_imprint.time
     # print imprint.time
+    imprint = om.history(age).next()
+    print "Previous: %s" % previous
+    print "Current: %s" % om.dumps(imprint)
+
     # om.restore(new_imprint)
     # om.pull(imprint)
     # print om.dumps(imprint)
