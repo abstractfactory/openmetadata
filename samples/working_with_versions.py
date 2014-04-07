@@ -25,7 +25,7 @@ password.data = 'abcdef'
 om.dump(password)
 
 # Save version and update dataset
-om.increment(password)
+om.save(password)
 password.data = 'Sandra Bullock'
 om.dump(password)
 

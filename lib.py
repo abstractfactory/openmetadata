@@ -61,6 +61,16 @@ class Node(object):
 
     @property
     def location(self):
+        """Return location of `self`
+
+        Note that the location is the top-most parent
+        of metadata and may not be equivalent to the
+        result of .parent
+
+        This is primarily a convenience property.
+
+        """
+
         path = self.path.split(CONTAINER, 1)[0]
         return Location(path)
 
