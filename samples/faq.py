@@ -21,9 +21,9 @@ if not os.path.exists(path):
     os.mkdir(path)
 
 """
-Q: Why store data in relation to folders?
+Q: Why store data in relation to content?
 
-A: To support the notion of programmable folders. Like with documentation
+A: To support the notion of programmable content. Like with documentation
     and the code it documents, metadata changes often and storing it
     separately from where it is consumed often leads to out-of-date
     information. Open Metadata allows for an "eat your own dog-food"-
