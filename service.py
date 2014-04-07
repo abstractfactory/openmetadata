@@ -5,6 +5,7 @@ import time
 import shutil
 
 SEP = os.sep
+OSNAME = os.name
 
 
 def isabsolute(path):
@@ -26,6 +27,17 @@ def exists(path):
 def count(path):
     """Return amount of items under `path`"""
     return len(os.listdir(path))
+
+
+def parent(path):
+    parent = os.path.dirname(path)
+
+    # Once we reach the highest parent (c-drive on Windows)
+    # dirname continuously returns it.
+    if parent == path:
+        return None
+
+    return parent
 
 
 def remove(path):

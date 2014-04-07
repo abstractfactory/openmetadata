@@ -24,4 +24,4 @@ In a data-oriented architecture, data controls the flow of information, not your
 
 This way, implementers can design their software by means of placing content, in a hierarchy for instance, that governs what actions the software may take in which order.
 
-Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an state-ful, intelligent unit capable of making desicions; this is what I call programmable content.
+Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an stateful, intelligent unit capable of making desicions; this is what I call programmable content.

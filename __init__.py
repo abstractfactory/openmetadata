@@ -1,6 +1,6 @@
 import logging
 
-from openmetadata import lib
+# from openmetadata import lib
 from openmetadata import error
 from openmetadata.api import *
 from openmetadata.version import *
@@ -16,11 +16,15 @@ def get_formatter():
     return formatter
 
 
-def setup_log(root):
+def setup_log(root, level=None):
     log = logging.getLogger(root)
-    # log.setLevel(logging.DEBUG)
-    log.setLevel(logging.INFO)
-    # log.setLevel(logging.WARNING)
+
+    if not level:
+        # log.setLevel(logging.DEBUG)
+        log.setLevel(logging.INFO)
+        # log.setLevel(logging.WARNING)
+    else:
+        log.setLevel(level)
 
     formatter = get_formatter()
     stream_handler = logging.StreamHandler()

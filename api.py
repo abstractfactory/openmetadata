@@ -479,30 +479,62 @@ def dumps(node):
     """Return hierarchy of `node` as a plain dictionary"""
     root = {}
 
+    if not node.hasdata:
+        pull(node)
+
     if hasattr(node, 'children'):
         for child in node:
             root[child.name] = dumps(child)
     else:
-        pull(node)
         root = node.data
 
     return root
 
 
 def metadata(path, *metapaths):
-    """Retrieve Open Metadata objects via `path` and `metapath`"""
+    """Retrieve Open Metadata objects via `path` and `metapath`
+
+    Description
+        `metapath` may be specified as either a tuple of names
+        >> metapaths = 'parent', 'child', 'subchild', ..
+
+        Or as a concatenated path
+        >> metapaths = '/parent/child/subchild'
+
+        Or a combination of both
+        >> metapaths = 'parent', 'child/subchild'
+
+    """
+
+    metapaths = list(metapaths)
     location = lib.Location(path)
 
     root = location
 
-    for metapath in metapaths:
-        parts = metapath.split(SEP)
-        while parts:
-            pull(root)
-            root = root._children.get(parts.pop(0))
+    for index in range(len(metapaths)):
+        # Expand cases where the metapath is concatenated
+        # with separators; e.g. /meta/path.string
+        metapath = metapaths[index]
+        if Node.SEP in metapath:
+            parts = []
+            for part in metapath.split(Node.SEP):
+                if not part:
+                    continue
+                parts.append(part)
 
-            if not root:
-                return None
+            metapaths.pop(index)
+            for part in parts:
+                metapaths.insert(index, part)
+
+    while metapaths:
+        pull(root)
+
+        current = metapaths.pop(0)
+
+        try:
+            root = root.children_as_dict[current]
+        except KeyError:
+            raise error.Exists("%s does not exist" % current)
 
     return root
 
@@ -608,23 +640,28 @@ if __name__ == '__main__':
     om.setup_log('openmetadata')
 
     path = r'c:\users\marcus\om2'
+    age = om.metadata(path, '/age')
+    print repr(age)
     age = om.metadata(path, 'age')
-    om.pull(age)
+    print repr(age)
+    # om.pull(age)
     
-    previous = age.data
+    # previous = age.data
 
-    age.data = age.data + 1
-    om.dump(age)
+    # age.data = age.data + 1
+    # om.dump(age)
 
     # _make_version(age)
 
     # print new_imprint.time > old_imprint.time
     # print older_imprint.time > older_imprint.time
     # print imprint.time
-    imprint = om.history(age).next()
-    print "Previous: %s" % previous
-    print "Current: %s" % om.dumps(imprint)
+    # imprint = om.history(age).next()
+    # print "Previous: %s" % previous
+    # print "Current: %s" % om.dumps(imprint)
 
     # om.restore(new_imprint)
     # om.pull(imprint)
     # print om.dumps(imprint)
+    
+    # print dumps(Location(path))

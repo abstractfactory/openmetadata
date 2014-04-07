@@ -3,6 +3,7 @@ import logging
 
 from openmetadata import service
 from openmetadata import error
+from openmetadata import path
 
 # EXT = '.'
 DIV = '&'
@@ -13,6 +14,11 @@ VERSIONS = '.versions'
 TRASH = '.trash'
 
 LOG = logging.getLogger('openmetadata.lib')
+
+osname = service.OSNAME
+path_map = {'nt': path.WindowsPath,
+            'posix': path.PosixPath}
+Path = path_map[osname]
 
 
 class Node(object):
@@ -30,6 +36,7 @@ class Node(object):
 
     __metaclass__ = abc.ABCMeta
 
+    SEP = '/'
     EXT = '.'
 
     def __str__(self):
@@ -106,6 +113,31 @@ class Node(object):
             self._isvalid = True
 
         return path
+
+    @property
+    def metapath(self):
+        """Return metapath from fullpath
+
+        A metapath is the full path to a particular
+        set of metadata within a location, excluding suffixes.
+
+        Example
+            >> fullpath = r'/home/marcus/.meta/group.list/dataset.int
+            >> metapath = '/group/dataset'
+
+        """
+
+        path = Path.parse(self.path)
+        _, metapath_wsuffix = path.rsplit(CONTAINER, 1)
+
+        metapath = ''
+        for part in metapath_wsuffix.split(self.SEP):
+            if not part:
+                continue
+
+            metapath += '/' + part.split(self.EXT, 1)[0]
+
+        return metapath
 
     @property
     def type(self):
@@ -649,39 +681,41 @@ if __name__ == '__main__':
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
-    print location.name
+    # print location.name
 
     # # Add a regular string
     ostring = om.Dataset('simple_data', parent=location)
     ostring.data = 'my simple string'
     # print om.exists(ostring)
-    print ostring.basename
+    # print ostring.basename
 
     # Add text
-    # text = om.Dataset('story.text', parent=location)
-    # text.data = 'There once was a boy'
+    text = om.Dataset('story.text', parent=location)
+    text.data = 'There once was a boy'
 
-    # # Add a list
-    # olist = om.Group('mylist.list', parent=location)
+    # Add a list
+    olist = om.Group('mylist.list', parent=location)
 
-    # # Containing three datasets..
-    # l1 = om.Dataset(path='item1.string', data='a string value', parent=olist)
-    # l2 = om.Dataset(path='item2.bool', data=True, parent=olist)
-    # l3 = om.Dataset(path='item3.int', data=5, parent=olist)
+    # Containing three datasets..
+    l1 = om.Dataset(path='item1.string', data='a string value', parent=olist)
+    l2 = om.Dataset(path='item2.bool', data=True, parent=olist)
+    l3 = om.Dataset(path='item3.int', data=5, parent=olist)
 
-    # # ..and a dictionary..
-    # odict = om.Group(path='mydict.dict', parent=olist)
+    # ..and a dictionary..
+    odict = om.Group(path='mydict.dict', parent=olist)
 
-    # # ..with tree keys
-    # key1 = om.Dataset('key1.string', data='value', parent=odict)
+    # ..with tree keys
+    key1 = om.Dataset('key1.string', data='value', parent=odict)
 
-    # # One of which, we neglect to specify a data-type.
-    # # The data-type will be determined via the Python data-type <str>
-    # key2 = om.Dataset('key2', data=True, parent=odict)
+    # One of which, we neglect to specify a data-type.
+    # The data-type will be determined via the Python data-type <str>
+    key2 = om.Dataset('key2', data=True, parent=odict)
     # print key2.path
 
-    # text = om.Dataset('story.text', parent=odict)
-    # text.data = 'There once was a boy'
+    text = om.Dataset('story.text', parent=odict)
+    text.data = 'There once was a boy'
+
+    print text.metapath
 
     # Finally, write it to disk.
     # om.dump(location)
