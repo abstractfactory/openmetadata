@@ -98,107 +98,17 @@ def _dump(node, nohistory=False, simulate=False):
         path = dataset.path
 
         if not simulate:
-            if not nohistory:
-                _make_history(node)
+            if node.isdirty:
+                if not nohistory:
+                    _make_history(node)
 
-            service.dump(path, node.dump())
+                service.dump(path, node.dump())
 
-            LOG.info("_dump(): Successfully dumped: %r" % path)
+                LOG.info("_dump(): Successfully dumped: %r" % path)
+            else:
+                LOG.info("_dump(): Nothing dumped, data unchanged.")
         else:
             LOG.info("_dump(): Successfully simulated dump: %r" % path)
-
-
-def _make_history(node):
-    """Create an imprint of `node` as per RFC14"""
-
-    if not exists(node):
-        # Only create history for nodes
-        # that are being updated.
-        return
-
-    parent = node.parent
-    basename = node.basename
-    repository_path = SEP.join([parent.path, lib.HISTORY])
-
-    history_time = service.currenttime()
-    history_basename = "%s&%s" % (basename, history_time)
-    history_path = SEP.join([repository_path, history_basename])
-
-    service.copy(node.path, history_path)
-
-
-def _make_version(node):
-    pass
-
-
-def dumps(node):
-    """Return hierarchy of `node` as a plain dictionary"""
-    root = {}
-
-    if hasattr(node, 'children'):
-        for child in node:
-            root[child.name] = dumps(child)
-    else:
-        root = node.data
-
-    return root
-
-
-def metadata(path, *metapaths):
-    location = lib.Location(path)
-
-    root = location
-
-    for metapath in metapaths:
-        parts = metapath.split(SEP)
-        while parts:
-            pull(root)
-            root = root._children.get(parts.pop(0))
-
-            if not root:
-                return None
-
-    return root
-
-
-def read(path, *metapaths):
-    """Parse information from database into Python data-types"""
-    root = metadata(path, *metapaths)
-    return pull(root).data
-
-
-def read_as_dict(path, *metapaths):
-    result = {}
-    for node in read(path, *metapaths):
-        result[node.name] = node
-
-    return result
-
-
-def write(path, data, *metapaths):
-    """
-    Convenience-method for quickly writing out `data` to `path`
-
-    Example
-        >> om.write(r'c:\users\marcus', 'Hello there', 'introduction')
-
-    """
-
-    location = lib.Location(path)
-
-    metapaths = list(metapaths)
-    dataset = metapaths.pop()
-    groups = metapaths
-    root = location
-    for group in groups:
-        group = lib.GroupFactory(group, parent=root)
-        root = group
-
-    # Is it a group or a dataset?
-    item_type = lib.python_to_om(type(data))
-
-    dataset = item_type(dataset, data=data, parent=root)
-    dump(dataset)
 
 
 def pull(node):
@@ -236,7 +146,7 @@ def pull(node):
         for imprint in dirs + files:
             lib.Imprint(imprint, parent=node)
 
-    elif isinstance(node, lib.Dataset) or isinstance(node, lib.Imprint):
+    elif isinstance(node, lib.Dataset):
         """
          ______
         |       \
@@ -299,6 +209,21 @@ def pull(node):
     return node
 
 
+def lazy_pull(node):
+    """Only pull if `node` doesn't already have data
+
+    This is the direct equivalent to
+        >> if not node.hasdata:
+        >>     pull(node)
+
+    """
+
+    if not node.hasdata:
+        pull(node)
+
+    return node
+
+
 def remove(node, permanent=False):
     """Remove `node` from database, either to trash or permanently"""
     assert isinstance(node, lib.Node)
@@ -340,53 +265,6 @@ def remove(node, permanent=False):
     return True
 
 
-def restore(imprint):
-    """Restore `imprint` from history"""
-    assert isinstance(imprint, lib.Imprint)
-
-    LOG.info("restore(): Restoring %r" % imprint.path)
-
-    pull(imprint)
-
-    original_parent = imprint.parent.parent
-
-    # Is the original being updated or created?
-    original = original_parent.children_as_dict.get(imprint.original_name)
-    if not original:
-        original = Dataset(imprint.original_basename, parent=original_parent)
-
-    # Update original with historical data
-    original.data = imprint.data
-
-    dump(original, nohistory=True)
-
-    # Remove history
-    for old_imprint in history(original):
-        if imprint.time >= old_imprint.time:
-            LOG.info("restore(): Removing old history: %r" % old_imprint.path)
-            remove(old_imprint, permanent=True)
-
-    LOG.info("restore(): Restoring %r to %r" % (imprint.path, original.path))
-
-
-def history(node):
-    """Return history of `node`"""
-    parent = node.parent
-    pull(parent)
-
-    history_node = parent.children_as_dict.get('.history')
-
-    if not history_node.hasdata:
-        pull(history_node)
-
-    imprints = [imp for imp in history_node]
-    imprints = sorted(imprints, reverse=True)
-
-    for imprint in imprints:
-        if imprint == node:
-            yield imprint
-
-
 def exists(node):
     """Check if `node` exists under any suffix"""
     if isinstance(node, lib.Imprint):
@@ -401,6 +279,242 @@ def exists(node):
         existing.append(entry.split(".")[0])
 
     return node.name in existing
+
+
+# ---------------------------------------------------------------------
+#
+# Temporal Metadata, RFC14
+#
+# ---------------------------------------------------------------------
+
+
+def save(node):
+    """Save `node` as a new version"""
+    return _make_version(node)
+
+
+def versions(node):
+    raise NotImplementedError
+    """Return versions of `node`"""
+    # raise NotImplementedError
+
+    parent = node.parent
+
+    lazy_pull(parent)
+
+    versions_node = parent.children_as_dict.get(lib.VERSIONS)
+    if versions_node is None:
+        return
+
+    lazy_pull(versions_node)
+
+    # TODO: potential bottle-neck
+    versions = [ver for ver in versions_node]
+    versions = sorted(versions, reverse=True)
+
+    for version in versions:
+        if version == node:
+            yield version
+
+
+def version(node, number):
+    raise NotImplementedError
+    """Return `version` of `node`"""
+    for version in versions(node):
+        if version.number == number:
+            return version
+
+
+def history(node):
+    """Return history of `node`"""
+    parent = node.parent
+
+    lazy_pull(parent)
+
+    history_node = parent.children_as_dict.get(lib.HISTORY)
+    if history_node is None:
+        return
+
+    lazy_pull(history_node)
+
+    # TODO: potential bottle-neck
+    imprints = [imp for imp in history_node]
+    imprints = sorted(imprints, reverse=True)
+
+    for imprint in imprints:
+        if imprint == node:
+            yield imprint
+
+
+def restore(imprint):
+    """Restore `imprint` to target from history"""
+    assert isinstance(imprint, lib.Imprint)
+    LOG.info("restore(): Restoring %r" % imprint.path)
+    lazy_pull(imprint)
+
+    target_parent = imprint.parent.parent
+
+    neighbours = target_parent.children_as_dict
+    target = neighbours.get(imprint.target_name)
+    if not target:
+        # If target doesn't exist, the imprint is
+        # being restored into a new dataset.
+        name = imprint.target_basename
+        target = Dataset(name, parent=target_parent)
+
+    # Update target with historical data
+    previous_value = imprint.children_as_dict.get('value')
+    target.data = pull(previous_value).data
+
+    dump(target, nohistory=True)
+
+    # Remove history
+    for old_imprint in history(target):
+        if old_imprint.time >= imprint.time:
+            LOG.info("restore(): Removing old history: %r" % old_imprint.path)
+            remove(old_imprint, permanent=True)
+
+    LOG.info("restore(): Restoring %r to %r" % (imprint.path, target.path))
+
+
+def _make_history(node):
+    """Create an imprint of `node` as per RFC14"""
+
+    if not exists(node):
+        # Only create history for nodes
+        # that are being updated.
+        return
+
+    lazy_pull(node)
+
+    parent = node.parent
+    basename = node.basename
+
+    imprint_time = service.currenttime()
+    imprint_name = "%s&%s" % (basename, imprint_time)
+
+    # Construct history group
+    history = Group(lib.HISTORY, parent=parent)
+    imprint = Imprint(imprint_name, parent=history)
+    Dataset('user', data='marcus', parent=imprint)
+    Dataset('value', data=node.data, parent=imprint)
+
+    assert not exists(imprint)
+
+    dump(history)
+
+    LOG.info("_make_history(): Successfully made history for %s" % node.path)
+
+
+def _make_version(node):
+    if not exists(node):
+        # Only create history for nodes
+        # that are being updated.
+        return
+
+    lazy_pull(node)
+
+    parent = node.parent
+
+    # Construct history group
+    versions = Group(lib.VERSIONS, parent=parent)
+
+    # Latest version is n + 1 number of existing versions
+    count = 0
+    if service.exists(versions.path):
+        count = service.count(versions.path)
+
+    imprint_name = 'v%03d' % (count + 1)
+
+    imprint = Imprint(imprint_name, parent=versions)
+    Dataset('user', data='marcus', parent=imprint)
+    Dataset('value', data=node.data, parent=imprint)
+    Dataset('time', data=service.currenttime(), parent=imprint)
+
+    assert not exists(imprint)
+
+    dump(versions)
+
+    LOG.info("_make_history(): Successfully made a version of %s" % node.path)
+
+
+# ---------------------------------------------------------------------
+#
+# Convenience functions
+#
+# ---------------------------------------------------------------------
+
+
+def dumps(node):
+    """Return hierarchy of `node` as a plain dictionary"""
+    root = {}
+
+    if hasattr(node, 'children'):
+        for child in node:
+            root[child.name] = dumps(child)
+    else:
+        pull(node)
+        root = node.data
+
+    return root
+
+
+def metadata(path, *metapaths):
+    """Retrieve Open Metadata objects via `path` and `metapath`"""
+    location = lib.Location(path)
+
+    root = location
+
+    for metapath in metapaths:
+        parts = metapath.split(SEP)
+        while parts:
+            pull(root)
+            root = root._children.get(parts.pop(0))
+
+            if not root:
+                return None
+
+    return root
+
+
+def read(path, *metapaths):
+    """Retrieve Python objects via `path` and `metapath`"""
+    root = metadata(path, *metapaths)
+    return pull(root).data
+
+
+def read_as_dict(path, *metapaths):
+    result = {}
+    for node in read(path, *metapaths):
+        result[node.name] = node
+
+    return result
+
+
+def write(path, data, *metapaths):
+    """
+    Convenience-method for quickly writing out `data` to `path`
+
+    Example
+        >> om.write(r'c:\users\marcus', 'Hello there', 'introduction')
+
+    """
+
+    location = lib.Location(path)
+
+    metapaths = list(metapaths)
+    dataset = metapaths.pop()
+    groups = metapaths
+    root = location
+    for group in groups:
+        group = lib.GroupFactory(group, parent=root)
+        root = group
+
+    # Is it a group or a dataset?
+    item_type = lib.python_to_om(type(data))
+
+    dataset = item_type(dataset, data=data, parent=root)
+    dump(dataset)
 
 
 def isdataset(node):
@@ -422,7 +536,9 @@ def ishistory(node):
 # Convenience wrappers
 
 
-listdir = read
+# om.listdir() is identical to os.listdir() except for
+# returning Open Metadata objects rather than Python strings.
+listdir = lambda path: read(path)
 
 
 __all__ = [
@@ -457,25 +573,21 @@ __all__ = [
 
 
 if __name__ == '__main__':
-    from pprint import pprint
+    # from pprint import pprint
     import openmetadata as om
+    om.setup_log('openmetadata')
+
     path = r'c:\users\marcus\om2'
-    location = om.Location(path)
-    om.pull(location)
-    pprint(om.dumps(location))
-    # group = om.read_as_dict(path, 'root').get('group')
-    # print group
-    # om.remove(group)
+    age = om.metadata(path, 'age')
+    # om.pull(age)
+    # age.data = age.data + 1
+    # om.dump(age)
 
-    # print age
-    # print history(age)
-    # om.pull(location)
+    _make_version(age)
 
-    # history_ = om.read_as_dict(path).get('.history')
-    # om.pull(history_)
-    # imprint = history_.children[0]
-    # # print om.exists(imprint)
-    # print repr(imprint)
-    # om.restore(imprint)
-    # # print history.path
-    # print history.name
+    # print new_imprint.time > old_imprint.time
+    # print older_imprint.time > older_imprint.time
+    # print imprint.time
+    # om.restore(new_imprint)
+    # om.pull(imprint)
+    # print om.dumps(imprint)

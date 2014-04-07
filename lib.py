@@ -185,7 +185,7 @@ class Location(TreeNode):
 
     def add(self, child):
         if child.name in self._children:
-            self.LOG.info("WARNING: %s was overwritten" % child.name)
+            self.LOG.warning("%s was overwritten" % child.path)
         self._children[child.name] = child
 
     @property
@@ -237,6 +237,10 @@ class Group(TreeNode):
     def data(self):
         return self._children.values()
 
+    @data.setter
+    def data(self, value):
+        raise NotImplementedError
+
 
 class Blob(Node):
     """
@@ -284,6 +288,11 @@ class Blob(Node):
             self._data = data
             return
 
+        # If data remains unchanged, don't
+        # bother altering the `isdirty` bool.
+        if data == self._data:
+            return
+
         if not self.type:
             self._type = data.__class__
 
@@ -291,11 +300,9 @@ class Blob(Node):
             data = self.type(data)
 
         except TypeError:
-            # Item has no type
-            raise
+            raise TypeError("Item has no type")
 
         except ValueError:
-            # Invalid data-type
             raise ValueError('Data-type %r, expected %r'
                              % (data.__class__.__name__,
                                 self.type.__name__))
@@ -363,10 +370,14 @@ class Versions(Group):
     pass
 
 
-class Imprint(Node):
+class Version(Group):
+    pass
+
+
+class Imprint(Group):
     def __str__(self):
         """This is used when comparing with other objects"""
-        return self.original_name
+        return self.target_name
 
     def __init__(self, path, data=None, parent=None):
         super(Imprint, self).__init__(path)
@@ -398,20 +409,20 @@ class Imprint(Node):
         return self.basename
 
     @property
-    def original_name(self):
+    def target_name(self):
         return self.basename.split(self.EXT)[0]
 
     @property
-    def original_suffix(self):
+    def target_suffix(self):
         name, date = self._path.rsplit(DIV)
         return name.split(self.EXT)[-1]
 
     @property
-    def original_basename(self):
-        original_basename = self.original_name
-        original_basename += self.EXT
-        original_basename += self.original_suffix
-        return original_basename
+    def target_basename(self):
+        bn = self.target_name
+        bn += self.EXT
+        bn += self.target_suffix
+        return bn
 
     @property
     def time(self):
@@ -623,6 +634,7 @@ if __name__ == '__main__':
     doctest.testmod()
 
     import openmetadata as om
+    om.setup_log('openmetadata')
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')

@@ -26,6 +26,8 @@ om.dump(girlfriend)
 girlfriend.data = 'Sandra Bullock'
 om.dump(girlfriend)
 
+assert om.read(path, 'girlfriend') == 'Sandra Bullock'
+
 # Restore previous value from history
 # *note: om.history() returns a Python generator.
 imprint = om.history(girlfriend).next()

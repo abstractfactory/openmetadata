@@ -117,11 +117,11 @@ def storing_collection_as_open_metadata():
      _______________________       ___________________________________________
     |                       |     |                                           |
     | ['entry1', 'entry2' ] |---->| /location/.meta/mydata.list/entry1.string |
-    |_______________________|     |___________________________________________|
-                             .
-                             .     ___________________________________________
-                             .    |                                           |
-                             .--->| /location/.meta/mydata.list/entry2.string |
+    |_______________________| |   |___________________________________________|
+                              |
+                              |    ___________________________________________
+                              |   |                                           |
+                              \-->| /location/.meta/mydata.list/entry2.string |
                                   |___________________________________________|
 
     The advantage of each ultimately depends on your use-case, but in short:

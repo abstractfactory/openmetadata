@@ -23,6 +23,11 @@ def exists(path):
     return os.path.exists(path)
 
 
+def count(path):
+    """Return amount of items under `path`"""
+    return len(os.listdir(path))
+
+
 def remove(path):
     """
     Remove `path`, regardless of it being a file or folder.
