@@ -5,6 +5,17 @@ Open Metadata
 
 Open Metadata is designed for programmers and scripters for use in data-oriented software architectures to facilitate the idea of programmable content.
 
+```python
+# Simplest use-case
+>>> import openmetadata as om
+>>> om.write('/home/marcus', 'age', 27)
+>>> om.read('/home/marcus', 'age')
+27
+
+# More in /samples
+
+```
+
 Open Metadata is GPLv3 licensed software built upon the following open-source specifications. (Some not available at this moment, apologies for this)
 
 * [General Introduction](http://rfc.abstractfactory.io/spec/10)
