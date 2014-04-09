@@ -31,11 +31,10 @@ Functionality
 
     metadata        -- Convenience method for retrieving metadata objects
     read            -- Convenience method for reading metadata
-    read_as_dict    -- Convenience method of `read`, returns dict
-    lazy_pull       -- Pulls only if not previously pulled
     write           -- Convenience method for writing metadata
     exists          -- Does a node exist?
     dumps           -- Simulates `dump` and returns dict
+    lazy_pull       -- Pulls only if not previously pulled
 
     isdataset       -- Self-explanatory convenience method
     isgroup         -- Self-explanatory convenience method
@@ -476,7 +475,14 @@ def _make_version(node):
 
 
 def dumps(node):
-    """Return hierarchy of `node` as a plain dictionary"""
+    """Return hierarchy of `node` as a plain dictionary
+
+    TODO: This is meant to simulate dump() but at the moment is
+    performing a pull and returns all available data, both in-memory
+    and on-disk. This isn't consistent
+
+    """
+
     root = {}
 
     if not node.hasdata:
@@ -491,45 +497,27 @@ def dumps(node):
     return root
 
 
-def metadata(path, *metapaths):
+def metadata(path, metapath):
     """Retrieve Open Metadata objects via `path` and `metapath`
 
     Description
-        `metapath` may be specified as either a tuple of names
-        >> metapaths = 'parent', 'child', 'subchild', ..
-
-        Or as a concatenated path
-        >> metapaths = '/parent/child/subchild'
-
-        Or a combination of both
-        >> metapaths = 'parent', 'child/subchild'
+        `metapath` MUST be specified as a concatenated path
+        >> metapath = '/parent/child/subchild'
 
     """
 
-    metapaths = list(metapaths)
     location = lib.Location(path)
 
     root = location
 
-    for index in range(len(metapaths)):
-        # Expand cases where the metapath is concatenated
-        # with separators; e.g. /meta/path.string
-        metapath = metapaths[index]
-        if Node.SEP in metapath:
-            parts = []
-            for part in metapath.split(Node.SEP):
-                if not part:
-                    continue
-                parts.append(part)
+    parts = metapath.split(Node.SEP)
 
-            metapaths.pop(index)
-            for part in parts:
-                metapaths.insert(index, part)
-
-    while metapaths:
+    while parts:
         pull(root)
 
-        current = metapaths.pop(0)
+        current = parts.pop(0)
+        while current == '':
+            current = parts.pop(0)
 
         try:
             root = root.children_as_dict[current]
@@ -539,21 +527,25 @@ def metadata(path, *metapaths):
     return root
 
 
-def read(path, *metapaths):
+def read(path, metapath):
     """Retrieve Python objects via `path` and `metapath`"""
-    root = metadata(path, *metapaths)
+    root = metadata(path, metapath)
+
+    if isgroup(root):
+        return dumps(root)
+
     return pull(root).data
 
 
-def read_as_dict(path, *metapaths):
-    result = {}
-    for node in read(path, *metapaths):
-        result[node.name] = node
+# def read_as_dict(path, metapath):
+#     result = {}
+#     for node in read(path, metapath):
+#         result[node.name] = node
 
-    return result
+#     return result
 
 
-def write(path, data, *metapaths):
+def write(path, metapath, data):
     """
     Convenience-method for quickly writing out `data` to `path`
 
@@ -564,9 +556,10 @@ def write(path, data, *metapaths):
 
     location = lib.Location(path)
 
-    metapaths = list(metapaths)
-    dataset = metapaths.pop()
-    groups = metapaths
+    # metapaths = list(metapaths)
+    parts = metapath.split(Node.SEP)
+    dataset = parts.pop()
+    groups = parts
     root = location
     for group in groups:
         group = lib.GroupFactory(group, parent=root)
@@ -630,7 +623,7 @@ __all__ = [
     'isgroup',
     'ishistory',
     'isimprint',
-    'read_as_dict'
+    # 'read_as_dict'
 ]
 
 
@@ -645,7 +638,7 @@ if __name__ == '__main__':
     age = om.metadata(path, 'age')
     print repr(age)
     # om.pull(age)
-    
+
     # previous = age.data
 
     # age.data = age.data + 1

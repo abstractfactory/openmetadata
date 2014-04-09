@@ -3,20 +3,22 @@ Open Metadata
 
 ![](https://dl.dropbox.com/s/av2x8gel580ow48/om2_hierarchy.png)
 
-Open Metadata is designed for programmers and scripters for use in data-oriented software architectures to facilitate the idea of programmable content.
+Open Metadata lets you associate metadata with a location; such as a path on a file-system.
 
 ```python
 # Simplest use-case
 >>> import openmetadata as om
->>> om.write('/home/marcus', 27, 'age')
->>> om.read('/home/marcus', 'age')
-27
+>>> om.write('/home/marcus', 'Creator of Open Metadata', 'description')
+>>> om.read('/home/marcus', 'description')
+Creator of Open Metadata
 
 # More in /samples
 
 ```
 
-Open Metadata is GPLv3 licensed software built upon the following open-source specifications. (Some not available at this moment, apologies for this)
+# Specifications
+
+Open Metadata is GPLv3 licensed software built upon the following open-source specifications:
 
 * [General Introduction](http://rfc.abstractfactory.io/spec/10)
 * [Object-Oriented Metadata](http://rfc.abstractfactory.io/spec/12)
@@ -28,6 +30,10 @@ Open Metadata is GPLv3 licensed software built upon the following open-source sp
 * [Open Metadata Types](http://rfc.abstractfactory.io/spec/18)
 * [Storage Agnostic Metadata](http://rfc.abstractfactory.io/spec/19)
 * [Mirrored Metadata](http://rfc.abstractfactory.io/spec/20)
+
+# Why Open Metadata and not Technology X?
+
+Many alternatives were, and continue to be evaluated. Head over to [RFC24](http://rfc.abstractfactory.io/spec/24/) for an overview.
 
 # What is programmable content?
 

@@ -10,6 +10,7 @@ such as in debugging or one-off reading/writing.
 
 import os
 import openmetadata as om
+om.setup_log('openmetadata')
 
 # Starting-point
 path = os.path.expanduser(r'~\om_temp')
@@ -17,9 +18,9 @@ path = os.path.expanduser(r'~\om_temp')
 if not os.path.exists(path):
     os.mkdir(path)
 
-om.write(path, True, 'status')
-om.write(path, 'There once was a boy', 'story')
-om.write(path, 27, 'age')
+om.write(path, 'status', True)
+om.write(path, 'story', 'There once was a boy')
+om.write(path, 'age', 27)
 
 data = {
     'firstname': 'Marcus',
@@ -28,15 +29,21 @@ data = {
 }
 
 for key, value in data.iteritems():
-    om.write(path, value, key)
+    om.write(path, key, value)
 
 # Write deeply nested data
-om.write(path, True, 'root', 'group', 'amazing')
+om.write(path, '/root/group/amazing', True)
 
-# Successfully wrote: c:\users\marcus\om2\.meta\status.bool
-# Successfully wrote: c:\users\marcus\om2\.meta\story.string
-# Successfully wrote: c:\users\marcus\om2\.meta\age.int
-# Successfully wrote: c:\users\marcus\om2\.meta\lastname.string
-# Successfully wrote: c:\users\marcus\om2\.meta\email.string
-# Successfully wrote: c:\users\marcus\om2\.meta\firstname.string
-# Successfully wrote: c:\users\marcus\om2\.meta\root\group\amazing.bool
+# Successfully wrote: c:\users\marcus\om_temp\.meta\status.bool
+# Successfully wrote: c:\users\marcus\om_temp\.meta\story.string
+# Successfully wrote: c:\users\marcus\om_temp\.meta\age.int
+# Successfully wrote: c:\users\marcus\om_temp\.meta\lastname.string
+# Successfully wrote: c:\users\marcus\om_temp\.meta\email.string
+# Successfully wrote: c:\users\marcus\om_temp\.meta\firstname.string
+# Successfully wrote: c:\users\marcus\om_temp\.meta\root\group\amazing.bool
+
+# --------- Read it back in
+
+assert om.read(path, 'root/group/amazing') is True
+assert om.read(path, 'status') is True
+assert om.read(path, 'age') == 27

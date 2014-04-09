@@ -68,6 +68,10 @@ class Instance(object):
         message = "%r has no metadata %r" % (self.path.as_str, attr)
         raise AttributeError(message)
 
+    def __setattr__(self, attr, data):
+        raise NotImplementedError
+        print "Setting %s to %s" % (data, attr)
+
     @classmethod
     def _find_in_parenthood(cls, root, metapath):
         """Find `metapath` in `root` parent-hood"""
@@ -113,7 +117,6 @@ if __name__ == '__main__':
     from pprint import pprint
     inst = Instance(r'c:\users\marcus\om2\subom2')
     # print api.dumps(inst.location)
-    pprint(inst.address)
-    print inst.height
+    inst.testing = 5
     # print inst.notexist
     # print inst.parent.age
