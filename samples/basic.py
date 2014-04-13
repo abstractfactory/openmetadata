@@ -23,12 +23,12 @@ ostring.data = 'my simple string'
 olist = om.Group('mylist.list', parent=location)
 
 # Containing three datasets..
-l1 = om.Dataset(path='item1.string', data='a string value', parent=olist)
-l2 = om.Dataset(path='item2.bool', data=True, parent=olist)
-l3 = om.Dataset(path='item3.int', data=5, parent=olist)
+l1 = om.Dataset('item1.string', data='a string value', parent=olist)
+l2 = om.Dataset('item2.bool', data=True, parent=olist)
+l3 = om.Dataset('item3.int', data=5, parent=olist)
 
 # ..and a dictionary..
-odict = om.Group(path='mydict.dict', parent=olist)
+odict = om.Group('mydict.dict', parent=olist)
 
 # ..with two keys
 key1 = om.Dataset('key1.string', data='value', parent=odict)

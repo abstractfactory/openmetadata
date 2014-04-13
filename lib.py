@@ -6,7 +6,7 @@ from openmetadata import error
 from openmetadata import path
 
 # EXT = '.'
-DIV = '&'
+# DIV = '&'
 SEP = service.SEP
 CONTAINER = '.meta'
 HISTORY = '.history'
@@ -40,7 +40,7 @@ class Node(object):
     EXT = '.'
 
     def __str__(self):
-        return self.name
+        return self.path.name
 
     def __repr__(self):
         return u"%s(%r)" % (self.__class__.__name__, self.__str__())
@@ -61,10 +61,35 @@ class Node(object):
 
     @abc.abstractmethod  # Prevent from direct instantiation
     def __init__(self, path):
+        if isinstance(path, basestring):
+            path = Path(path)
+
         self._path = path
         self._type = None  # cache
         self._suffix = None  # cache
         self._isvalid = None
+
+    @property
+    def path(self):
+        path = self._path
+
+        if hasattr(self, 'parent'):
+            parent = self.parent
+
+            if not parent:
+                # The node has a parent attribute,
+                # but no parent has been set.
+                self._isvalid = False
+                return path
+
+            parent_path = parent.path
+            if hasattr(parent, 'resolved_path'):
+                parent_path = parent.resolved_path
+
+            path = parent_path + path
+            self._isvalid = True
+
+        return path
 
     @property
     def location(self):
@@ -78,98 +103,23 @@ class Node(object):
 
         """
 
-        path = self.path.split(CONTAINER, 1)[0]
-        return Location(path)
-
-    @property
-    def name(self):
-        return self.basename.split(self.EXT)[0] or self.basename
-
-    @property
-    def basename(self):
-        basename = self._path.split(SEP)[-1]
-
-        if not self.EXT in basename:
-            # basename doesn't contain a suffix
-            suffix = (self.EXT + self.suffix) if self.suffix else ''
-            basename += suffix
-
-        return basename
-
-    @property
-    def path(self):
-        path = self.basename
-
-        if hasattr(self, 'parent'):
-            parent = self.parent
-
-            if not parent:
-                # The node has a parent attribute,
-                # but no parent has been set.
-                self._isvalid = False
-                return path
-
-            path = SEP.join([parent.path, path])
-            self._isvalid = True
-
-        return path
-
-    @property
-    def metapath(self):
-        """Return metapath from fullpath
-
-        A metapath is the full path to a particular
-        set of metadata within a location, excluding suffixes.
-
-        Example
-            >> fullpath = r'/home/marcus/.meta/group.list/dataset.int
-            >> metapath = '/group/dataset'
-
-        """
-
-        path = Path.parse(self.path)
-        _, metapath_wsuffix = path.rsplit(CONTAINER, 1)
-
-        metapath = ''
-        for part in metapath_wsuffix.split(self.SEP):
-            if not part:
-                continue
-
-            metapath += '/' + part.split(self.EXT, 1)[0]
-
-        return metapath
+        return Location(self.path.location)
 
     @property
     def type(self):
         """
         Find type by looking in the object or its suffix
-         _________         __________
-        |         |       |          |
-        |  cache  |  -->  |  suffix  |
-        |_________|       |__________|
+         _________         _______________
+        |         |       |               |
+        |  cache  |  -->  |  path.suffix  |
+        |_________|       |_______________|
 
         """
 
         if not self._type:
-            self._type = string_to_python(self.suffix)
+            self._type = string_to_python(self.path.suffix)
 
         return self._type
-
-    @property
-    def suffix(self):
-        """
-        Find suffix, by looking in the object or path.
-         _________         ________
-        |         |       |        |
-        |  cache  |  -->  |  path  |
-        |_________|       |________|
-
-        """
-
-        if not self._suffix:
-            self._suffix = (self._path.split(self.EXT) + [None])[1]
-
-        return self._suffix
 
     @property
     def isvalid(self):
@@ -227,21 +177,24 @@ class Location(TreeNode):
         self._children = {}
 
     def copy(self, path=None):
-        node = self.__class__(path or self._path)
+        node = self.__class__(path or self.path)
         return node
 
     def add(self, child):
-        if child.name in self._children:
+        if child._path.name in self._children:
             self.LOG.warning("%s was overwritten" % child.path)
-        self._children[child.name] = child
+        self._children[child._path.name] = child
 
     @property
     def data(self):
         return self._children.values()
 
     @property
-    def path(self):
-        return SEP.join([self._path, CONTAINER])
+    def resolved_path(self):
+        return self.path + CONTAINER
+
+    def dump(self):
+        raise NotImplementedError
 
 
 class Group(TreeNode):
@@ -276,9 +229,9 @@ class Group(TreeNode):
             parent.add(self)
 
     def add(self, child):
-        if child.name in self._children:
-            self.LOG.info("WARNING: %s was overwritten" % child.name)
-        self._children[child.name] = child
+        if child.path.name in self._children:
+            self.LOG.info("WARNING: %s was overwritten" % child.path.name)
+        self._children[child.path.name] = child
 
     @property
     def data(self):
@@ -286,6 +239,9 @@ class Group(TreeNode):
 
     @data.setter
     def data(self, value):
+        raise NotImplementedError
+
+    def dump(self):
         raise NotImplementedError
 
 
@@ -303,8 +259,11 @@ class Blob(Node):
     def __init__(self, path, data=None, parent=None):
         super(Blob, self).__init__(path)
 
-        if service.isabsolute(path):
-            raise error.RelativePath('Path must be relative: %s' % path)
+        if self._path.isabsolute:
+            raise error.RelativePath('Path must be relative: %s' % self._path)
+
+        if not self._path.suffix:
+            raise error.Suffix('Path must include suffix')
 
         self._data = None
         self.parent = parent
@@ -339,6 +298,8 @@ class Blob(Node):
         if not self.type:
             self._type = data.__class__
 
+        print self._type
+
         try:
             data = self.type(data)
 
@@ -353,28 +314,9 @@ class Blob(Node):
         self._data = data
         self.isdirty = True
 
-    @property
-    def suffix(self):
-        """
-        Find suffix, by looking in the object, path or data-type.
-         _________         ________         _____________
-        |         |       |        |       |             |
-        |  cache  |  -->  |  path  |  -->  |  data-type  |
-        |_________|       |________|       |_____________|
-
-        """
-
-        if not self._suffix:
-            self._suffix = super(Blob, self).suffix
-
-        if not self._suffix:
-            self._suffix = python_to_string(type(self._data))
-
-        return self._suffix
-
     def dump(self):
         """To dump a blob means to hardlink"""
-        raise NotImplementedError
+        return self.path.as_str
 
 
 class Dataset(Blob):
@@ -396,7 +338,7 @@ class Dataset(Blob):
         in which case dump nothing.
 
         """
-
+        assert self.path.suffix is not None
         return str(self.data) if self.data is not None else ''
 
     def __getattr__(self, metaattr):
@@ -449,23 +391,19 @@ class Imprint(Group):
         dictionary using their name for keys.
 
         """
-        return self.basename
+        return self.path.basename + self.OPTIONDIV + self.option
 
     @property
     def target_name(self):
-        return self.basename.split(self.EXT)[0]
+        return self.path.name
 
     @property
     def target_suffix(self):
-        name, date = self._path.rsplit(DIV)
-        return name.split(self.EXT)[-1]
+        return self.path.suffix
 
     @property
     def target_basename(self):
-        bn = self.target_name
-        bn += self.EXT
-        bn += self.target_suffix
-        return bn
+        return self.path.basename
 
     @property
     def time(self):
@@ -482,7 +420,7 @@ class Imprint(Group):
 
         if not self._time:
 
-            date = self._path.rsplit(DIV)[-1]
+            date = self.path.option
             year = int(date[:4])
             month = int(date[4:6])
             day = int(date[6:8])
@@ -681,43 +619,47 @@ if __name__ == '__main__':
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
-    # print location.name
+    print location.path
 
     # # Add a regular string
-    ostring = om.Dataset('simple_data', parent=location)
-    ostring.data = 'my simple string'
+    # ostring = om.Dataset('simple_data', parent=location)
+    # ostring = om.Dataset('simple_data')
+    # ostring.data = 'my simple string'
     # print om.exists(ostring)
-    # print ostring.basename
+    # print ostring.path
 
-    # Add text
-    text = om.Dataset('story.text', parent=location)
-    text.data = 'There once was a boy'
+    # # Add text
+    # text = om.Dataset('story.text', parent=location)
+    # text.data = 'There once was a boy'
 
-    # Add a list
+    # # Add a list
     olist = om.Group('mylist.list', parent=location)
 
-    # Containing three datasets..
-    l1 = om.Dataset(path='item1.string', data='a string value', parent=olist)
-    l2 = om.Dataset(path='item2.bool', data=True, parent=olist)
-    l3 = om.Dataset(path='item3.int', data=5, parent=olist)
+    # # Containing three datasets..
+    # l1 = om.Dataset(path='item1.string', data='a string value', parent=olist)
+    # l2 = om.Dataset(path='item2.bool', data=True, parent=olist)
+    # l3 = om.Dataset(path='item3.int', data=5, parent=olist)
 
-    # ..and a dictionary..
+    # # ..and a dictionary..
     odict = om.Group(path='mydict.dict', parent=olist)
 
-    # ..with tree keys
-    key1 = om.Dataset('key1.string', data='value', parent=odict)
+    # # ..with tree keys
+    # key1 = om.Dataset('key1.string', data='value', parent=odict)
 
-    # One of which, we neglect to specify a data-type.
-    # The data-type will be determined via the Python data-type <str>
-    key2 = om.Dataset('key2', data=True, parent=odict)
-    # print key2.path
+    # # One of which, we neglect to specify a data-type.
+    # # The data-type will be determined via the Python data-type <str>
+    # key2 = om.Dataset('key2', data=True, parent=odict)
+    # print key2.path.suffix
 
     text = om.Dataset('story.text', parent=odict)
     text.data = 'There once was a boy'
 
-    print text.metapath
+    print text.path
+    # print text.path.meta
 
     # Finally, write it to disk.
+    # print location.dump()
+    # print text.dump()
     # om.dump(location)
 
     # location = om.Location(r'C:\Users\marcus\om2')

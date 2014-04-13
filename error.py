@@ -6,3 +6,6 @@ class Exists(BaseException):
 
 class RelativePath(BaseException):
     pass
+
+class Suffix(BaseException):
+    pass

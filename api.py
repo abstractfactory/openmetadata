@@ -87,7 +87,7 @@ def _precheck(node):
             _precheck(child)
     else:
         if not node.isvalid:
-            raise ValueError("%s was not valid" % node.path)
+            raise ValueError("%s was not valid" % node.path.as_str)
 
 
 def dump(node, nohistory=False, simulate=False):
@@ -105,6 +105,8 @@ def dump(node, nohistory=False, simulate=False):
 
 
 def _dump(node, nohistory=False, simulate=False):
+    errors = []
+
     if hasattr(node, 'children'):
         for child in node:
             _dump(child)
@@ -112,20 +114,29 @@ def _dump(node, nohistory=False, simulate=False):
     else:
         dataset = node
 
-        path = dataset.path
+        path = dataset.path.as_str
+        data = node.dump()
 
         if not simulate:
             if node.isdirty:
                 if not nohistory:
-                    _make_history(node)
+                    try:
+                        _make_history(node)
+                    except ValueError as e:
+                        errors.append(e)
 
-                service.dump(path, node.dump())
+                service.dump(path, data)
 
                 LOG.info("_dump(): Successfully dumped: %r" % path)
             else:
                 LOG.info("_dump(): Nothing dumped, data unchanged.")
         else:
             LOG.info("_dump(): Successfully simulated dump: %r" % path)
+
+    if errors:
+        LOG.error("There were errors:")
+        for err in errors:
+            LOG.error(str(err))
 
 
 def pull(node):
@@ -140,10 +151,10 @@ def pull(node):
 
     """
 
-    if not service.exists(node.path):
+    if not service.exists(node.path.as_str):
         node.isdirty = False
 
-        raise error.Exists("%s does not exist" % node.path)
+        raise error.Exists("%s does not exist" % node.path.as_str)
 
     if isinstance(node, lib.History):
         """
@@ -158,7 +169,7 @@ def pull(node):
 
         """
 
-        dirs, files = service.readdir(node.path)
+        dirs, files = service.readdir(node.path.as_str)
 
         for imprint in dirs + files:
             lib.Imprint(imprint, parent=node)
@@ -176,7 +187,7 @@ def pull(node):
 
         """
 
-        node.data = service.readfile(node.path)
+        node.data = service.readfile(node.path.as_str)
 
     elif isinstance(node, lib.Group) or isinstance(node, lib.Location):
         """
@@ -195,7 +206,7 @@ def pull(node):
 
         """
 
-        dirs, files = service.readdir(node.path)
+        dirs, files = service.readdir(node.path.as_str)
 
         for dir_ in dirs:
             if dir_ == lib.HISTORY:
@@ -246,28 +257,28 @@ def remove(node, permanent=False):
     assert isinstance(node, lib.Node)
 
     if not exists(node):
-        LOG.warning("remove(): %s did not exist" % node.path)
+        LOG.warning("remove(): %s did not exist" % node.path.as_str)
         return False
 
     if permanent:
-        service.remove(node.path)
-        LOG.info("remote(): Permanently removed %r" % node.path)
+        service.remove(node.path.as_str)
+        LOG.info("remote(): Permanently removed %r" % node.path.as_str)
         return
 
-    dirname = node.parent.path
-    basename = node.basename
+    dirname = node.parent.path.as_str
+    basename = node.path.basename
     trash = service.SEP.join([dirname, lib.TRASH])
 
-    # Ensure node.name is unique in trash, as per RFC14
+    # Ensure node.path.name is unique in trash, as per RFC14
     if service.exists(trash):
         dirs, files = service.readdir(trash)
         for trashed in dirs + files:
             trash_name = trashed.split(node.EXT, 1)[0]
-            if node.name == trash_name:
+            if node.path.name == trash_name:
                 # An existing copy of this node is
                 # already in the trash. Permanently remove it.
                 LOG.info("remove(): Removing exisisting "
-                         "%r from trash" % node.name)
+                         "%r from trash" % node.path.name)
                 existing_trashed_path = service.SEP.join([trash, trashed])
                 service.remove(existing_trashed_path)
 
@@ -276,8 +287,8 @@ def remove(node, permanent=False):
     assert not service.exists(deleted_path), \
         "This should have been taken care of above"
 
-    service.move(node.path, deleted_path)
-    LOG.info("remove(): Successfully removed %r" % node.path)
+    service.move(node.path.as_str, deleted_path)
+    LOG.info("remove(): Successfully removed %r" % node.path.as_str)
 
     return True
 
@@ -294,17 +305,17 @@ def hasdata(path, metapath):
 def exists(node):
     """Check if `node` exists under any suffix"""
     if isinstance(node, lib.Imprint):
-        return service.exists(node.path)
+        return service.exists(node.path.as_str)
 
-    if not service.exists(node.parent.path):
+    if not service.exists(node.parent.path.as_str):
         return False
 
     existing = []
-    dirs_, files_ = service.readdir(node.parent.path)
+    dirs_, files_ = service.readdir(node.parent.path.as_str)
     for entry in dirs_ + files_:
         existing.append(entry.split(".")[0])
 
-    return node.name in existing
+    return node.path.name in existing
 
 
 # ---------------------------------------------------------------------
@@ -418,7 +429,7 @@ def _make_history(node):
     lazy_pull(node)
 
     parent = node.parent
-    basename = node.basename
+    basename = node.path.basename
 
     imprint_time = service.currenttime()
     imprint_name = "%s&%s" % (basename, imprint_time)
@@ -434,12 +445,13 @@ def _make_history(node):
     Dataset('user', data='marcus', parent=imprint)
     Dataset('value', data=previous_value, parent=imprint)
 
-    assert not service.exists(imprint.path), "%s already exists" % imprint.path
+    assert not service.exists(imprint.path.as_str), \
+        "%s already exists" % imprint.path
 
     dump(history)
 
     LOG.info("_make_history(): Successfully made history for %s (value=%s)"
-             % (node.path, node.data))
+             % (node.path.as_str, node.data))
 
 
 def _make_version(node):
@@ -457,8 +469,8 @@ def _make_version(node):
 
     # Latest version is n + 1 number of existing versions
     count = 0
-    if service.exists(versions.path):
-        count = service.count(versions.path)
+    if service.exists(versions.path.as_str):
+        count = service.count(versions.path.as_str)
 
     imprint_name = 'v%03d' % (count + 1)
 
@@ -471,7 +483,7 @@ def _make_version(node):
 
     dump(versions)
 
-    LOG.info("_make_history(): Successfully made a version of %s" % node.path)
+    LOG.info("_make_history(): Successfully made a version of %s" % node.path.as_str)
 
 
 # ---------------------------------------------------------------------
@@ -564,7 +576,7 @@ def read(path, metapath=None):
 # def read_as_dict(path, metapath):
 #     result = {}
 #     for node in read(path, metapath):
-#         result[node.name] = node
+#         result[node.path.name] = node
 
 #     return result
 
@@ -612,7 +624,7 @@ def ls(root, depth=1, _level=0):
         pull(root)
 
         for node in root:
-            print '\t' * (_level-1) + node.name
+            print '\t' * (_level-1) + node.path.name
             ls(node, depth, _level + 1)
 
 
