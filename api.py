@@ -13,18 +13,18 @@ Functionality
     Main
     ----
 
-    dump            -- Main mechanism with which to write to database
-    pull            -- Main mechanism with which to read from database
-    remove          -- Main mechanism with which to remove from database
+    dump            -- Write to database
+    pull            -- Read from database
+    remove          -- Remove from database
 
     Temporal
     --------
 
-    history         -- Returns generator of available history
-    restore         -- Restores node from history
-    save            -- Saves node as new version
+    history         -- Return generator of available history
+    restore         -- Restore from history
+    save            -- Saves as new version
     version         -- Retrieves saved version
-    versions        -- Returns generator of available versions
+    versions        -- Return generator of available versions
 
     Convenience
     -----------
@@ -32,9 +32,7 @@ Functionality
     metadata        -- Convenience method for retrieving metadata objects
     read            -- Convenience method for reading metadata
     write           -- Convenience method for writing metadata
-    exists          -- Does a node exist?
-    dumps           -- Simulates `dump` and returns dict
-    lazy_pull       -- Pulls only if not previously pulled
+    ls              -- List metacontent of directory
 
     isdataset       -- Self-explanatory convenience method
     isgroup         -- Self-explanatory convenience method
@@ -284,6 +282,15 @@ def remove(node, permanent=False):
     return True
 
 
+def hasdata(path, metapath):
+    """Convenience-method for querying the existance metadata"""
+    try:
+        metadata(path, metapath)
+    except error.Exists:
+        return False
+    return True
+
+
 def exists(node):
     """Check if `node` exists under any suffix"""
     if isinstance(node, lib.Imprint):
@@ -497,16 +504,19 @@ def dumps(node):
     return root
 
 
-def metadata(path, metapath):
+def metadata(path, metapath=None):
     """Retrieve Open Metadata objects via `path` and `metapath`
 
     Description
-        `metapath` MUST be specified as a concatenated path
-        >> metapath = '/parent/child/subchild'
+        path        -- Absolute path to associated directory
+        metapath    -- A concatenated path to metadata
+                       e.g. '/parent/child/subchild'
 
     """
 
     location = lib.Location(path)
+    if metapath is None:
+        return location
 
     root = location
 
@@ -519,22 +529,36 @@ def metadata(path, metapath):
         while current == '':
             current = parts.pop(0)
 
+        # Remove suffix for query
+        name, suffix = (current.rsplit(Node.EXT, 1) + [None])[:2]
+
         try:
-            root = root.children_as_dict[current]
+            root = root.children_as_dict[name]
+
+            # If metapath included a suffix,
+            # ensure the child we fetch match this suffix.
+            if suffix:
+                if not root.suffix == suffix:
+                    raise KeyError
+
         except KeyError:
-            raise error.Exists("%s does not exist" % current)
+            raise error.Exists("%s does not exist" % name)
 
     return root
 
 
-def read(path, metapath):
+def read(path, metapath=None):
     """Retrieve Python objects via `path` and `metapath`"""
     root = metadata(path, metapath)
+    pull(root)
 
-    if isgroup(root):
-        return dumps(root)
+    if isgroup(root) or islocation(root):
+        children = []
+        for child in root:
+            children.append(child.name)
+        return children
 
-    return pull(root).data
+    return root.data
 
 
 # def read_as_dict(path, metapath):
@@ -545,7 +569,7 @@ def read(path, metapath):
 #     return result
 
 
-def write(path, metapath, data):
+def write(path, metapath, data=None):
     """
     Convenience-method for quickly writing out `data` to `path`
 
@@ -566,10 +590,34 @@ def write(path, metapath, data):
         root = group
 
     # Is it a group or a dataset?
-    item_type = lib.python_to_om(type(data))
+    if data is None:
+        typ = None
+    else:
+        typ = type(data)
+    item_type = lib.python_to_om(typ)
 
     dataset = item_type(dataset, data=data, parent=root)
     dump(dataset)
+
+
+def ls(root, depth=1, _level=0):
+    if isinstance(root, basestring):
+        root = Location(root)
+
+    # current_depth = 0
+    if _level > depth:
+        return
+
+    if hasattr(root, 'children'):
+        pull(root)
+
+        for node in root:
+            print '\t' * (_level-1) + node.name
+            ls(node, depth, _level + 1)
+
+
+def islocation(node):
+    return True if isinstance(node, lib.Location) else False
 
 
 def isdataset(node):
@@ -593,7 +641,7 @@ def ishistory(node):
 
 # om.listdir() is identical to os.listdir() except for
 # returning Open Metadata objects rather than Python strings.
-listdir = lambda path: read(path)
+# listdir = lambda path: read(path)
 
 
 __all__ = [
@@ -608,7 +656,7 @@ __all__ = [
     # Main functionality
     'metadata',
     'dump',
-    'dumps',
+    # 'dumps',  # On-hold, due to ambivalent functionality
     'read',
     'write',
     'pull',
@@ -618,12 +666,13 @@ __all__ = [
     'history',
 
     # Convenience functionality
-    'listdir',
+    # 'listdir',  # On-hold, possibly frivilous
+    'hasdata',
     'isdataset',
     'isgroup',
     'ishistory',
     'isimprint',
-    # 'read_as_dict'
+    # 'read_as_dict'  # About to be replaced by HDF5-like impl.
 ]
 
 
@@ -633,10 +682,14 @@ if __name__ == '__main__':
     om.setup_log('openmetadata')
 
     path = r'c:\users\marcus\om2'
-    age = om.metadata(path, '/age')
-    print repr(age)
-    age = om.metadata(path, 'age')
-    print repr(age)
+    # ls(path, depth=1)
+    print read(path, None)
+
+    # print exists(path, 'age2')
+    # age = om.metadata(path, '/age')
+    # print repr(age)
+    # age = om.metadata(path, 'age')
+    # print repr(age)
     # om.pull(age)
 
     # previous = age.data

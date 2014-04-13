@@ -3,18 +3,52 @@ Open Metadata
 
 ![](https://dl.dropbox.com/s/av2x8gel580ow48/om2_hierarchy.png)
 
-Open Metadata lets you associate metadata with a location; such as a path on a file-system.
+With Open Metadata, you can associate metadata with a location; such as a path on a file-system.
 
 ```python
 # Simplest use-case
 >>> import openmetadata as om
->>> om.write('/home/marcus', 'Creator of Open Metadata', 'description')
+>>> om.write('/home/marcus', 'description', 'Creator of Open Metadata')
 >>> om.read('/home/marcus', 'description')
 Creator of Open Metadata
-
-# More in /samples
-
 ```
+
+Head over to the /samples directory for more examples.
+
+Open Metadata is there for you when:
+
+* Change is common
+* Space is cheap
+* Control outweighs performance
+
+# Features
+
+Open Metadata is in early development (current version `0.3`) but below is what it can do for you today.
+
+#### Non-destructive
+
+Every change you make is maintained in history; facilitating persistent undo/redo, traceable history of who did what and when, including incremental versioning with arbitrary metadata, like a changelog or description. All retrievable at any point in time.
+
+#### Full disclosure
+
+You may at any point in time browse to data at any hierarchical level using your native file-browser; read data, write, modify, delete or debug malicious data with tools you know.
+
+#### Partial I/O
+
+Quickly read and write within large sets of data without reading everything into memory nor affecting existing data; facilitating distributed collaborative editing.
+
+#### No limits on size nor complexity
+
+Store millions of strings, booleans, matrices.. groups of matrices.. matrices of groups, strings, booleans and vectors. On consumer hardware, in a matter of megabytes, without compression. Then go ahead and store billions.
+
+#### Storage allocation control
+
+New datasets take up *zero* space; meaning you can setup arbitrarily sized arrays of data and only read and write to parts of it you require at any point in time; Open Metadata will only occupy the space you actually use.
+
+#### Open specification, open source
+
+There are no mysteries about the inner-workings of the data that you write; you may write personal tools for debugging, graphical interfaces or extensions to the standard. The specifications are all laid out below and collaboration is welcome. (Want Open Metadata in Lua, Java, PHP or C++?)
+
 
 # Specifications
 
@@ -30,6 +64,7 @@ Open Metadata is GPLv3 licensed software built upon the following open-source sp
 * [Open Metadata Types](http://rfc.abstractfactory.io/spec/18)
 * [Storage Agnostic Metadata](http://rfc.abstractfactory.io/spec/19)
 * [Mirrored Metadata](http://rfc.abstractfactory.io/spec/20)
+* [Garbage Metadata](http://rfc.abstractfactory.io/spec/20)
 
 # Why Open Metadata and not Technology X?
 

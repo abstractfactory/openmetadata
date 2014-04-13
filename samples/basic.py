@@ -51,12 +51,12 @@ print om.read(path)
 print om.read(path, 'mylist')
 # --> [Bool('item2.bool'), Int('item3.int'), ...]
 
-print om.read(path, 'mylist', 'item2')
+print om.read(path, 'mylist/item2')
 # # --> True
 
 # assert om.read == om.listdir
 
-for item in om.listdir(path):
-    print item.path
+for item in om.read(path):
+    print item
 # # --> c:\users\marcus\om2\.meta\mylist.list
 # --> c:\users\marcus\om2\.meta\simple_data.string

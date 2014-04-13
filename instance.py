@@ -68,9 +68,9 @@ class Instance(object):
         message = "%r has no metadata %r" % (self.path.as_str, attr)
         raise AttributeError(message)
 
-    def __setattr__(self, attr, data):
-        raise NotImplementedError
-        print "Setting %s to %s" % (data, attr)
+    # def __setattr__(self, attr, data):
+    #     raise NotImplementedError
+    #     print "Setting %s to %s" % (data, attr)
 
     @classmethod
     def _find_in_parenthood(cls, root, metapath):
