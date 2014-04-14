@@ -84,7 +84,6 @@ class Node(object):
         self._data = None
         self._parent = parent
 
-        print "Setting %s to %s" % (data, self)
         if data:
             self.data = data
 
@@ -148,8 +147,7 @@ class Node(object):
         return self._type
 
     def add(self, child):
-        print "Adding %s to %s" % (child, self)
-        path = child._path
+        path = child.relativepath
         key = path.name
 
         if path.hasoption:
@@ -276,13 +274,6 @@ class Location(Node):
     @property
     def resolved_path(self):
         return self.path + self._path.CONTAINER
-
-    # @property
-    # def parent(self):
-    #     """Return physical parent"""
-    #     parent_path = self._path.parent
-    #     print parent_path
-        # return self.copy(parent_path)
 
     def dump(self):
         raise NotImplementedError

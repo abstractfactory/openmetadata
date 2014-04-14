@@ -481,17 +481,13 @@ def _make_history(node):
     # Construct history group
     history = History(lib.HISTORY, parent=parent)
     imprint = Imprint(imprint_name, parent=history)
-
-    print imprint_name
-    # Dataset('user', data='marcus', parent=imprint)
-
-    # lib.python_to_string(type(previous_value))
-    # Dataset('value', data=previous_value, parent=imprint)
+    Dataset('user', data='marcus', parent=imprint)
+    Dataset('value', data=previous_value, parent=imprint)
 
     assert not service.exists(imprint.path.as_str), \
         "%s already exists" % imprint.path
 
-    # dump(history)
+    dump(history)
 
     LOG.info("_make_history(): Successfully made history for %s (value=%s)"
              % (node.path.as_str, node.data))

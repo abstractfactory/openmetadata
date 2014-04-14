@@ -4,8 +4,6 @@ This module provides examples for working with history
 
 """
 
-raise NotImplementedError
-
 import os
 import time
 import openmetadata as om

@@ -88,11 +88,10 @@ class Path(object):
 
         assert isinstance(path, basestring), path
 
-        option = None
-        if self.OPTIONDIV in path:
-            path, option = path.split(self.OPTIONDIV)
+        path = self.parse(path)
+        path, option = self.splitoption(path)
 
-        self._path = self.parse(path)
+        self._path = path
         self.__suffix = None
         self.__option = option
 
@@ -164,6 +163,35 @@ class Path(object):
         path_ = '/'.join(parts)
 
         return path_
+
+    @classmethod
+    def splitoption(cls, path):
+        """
+        Example
+            >>> path = Path('/home/marcus&options')
+            >>> path.option
+            'options'
+            >>> path = Path('test&options')
+            >>> path.option
+            'options'
+        """
+
+        try:
+            head, basename = path.rsplit(cls.PROCSEP, 1)
+        except ValueError:
+            head, basename = '', path
+
+        option = None
+        if cls.OPTIONDIV in basename:
+            basename = basename
+            if cls.OPTIONDIV in basename:
+                basename, option = basename.split(cls.OPTIONDIV)
+
+        path = basename
+        if head:
+            path = cls.PROCSEP.join([head, basename])
+
+        return path, option
 
     def deparse(self):
         """
@@ -340,7 +368,15 @@ class Path(object):
             >>> path = Path('/root/child.ext')
             >>> path.suffix
             'ext'
+
             >>> path = Path('/root/child.ext&with_options')
+            >>> path.suffix
+            'ext'
+
+            >>> path = Path('/root/.meta/child.ext&opt/name')
+            >>> path.suffix
+
+            >>> path = Path('/root/.meta/child.ext&opt/name.ext')
             >>> path.suffix
             'ext'
 
@@ -489,6 +525,18 @@ class MetaPath(DirPath):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
+
+    # path = Path('/root/.meta/child.ext&opt')
+    path = Path('child.ext&opt')
+    print path.option
+    # path = Path('/root/.meta/child')
+    # print Path.OPTIONDIV
+    # print '/test/some&folder'.rsplit(Path.OPTIONDIV)
+    # print Path.splitoption('/test/some&folder')
+    
+    # print path.basename
+    # print path.suffix
+    # print path.option
 
     # p = WindowsPath(r's:\absolute\path.ast\onemore\..')
     # print p.suffix
