@@ -32,7 +32,7 @@ Functionality
     metadata        -- Convenience method for retrieving metadata objects
     read            -- Convenience method for reading metadata
     write           -- Convenience method for writing metadata
-    ls              -- List metacontent of directory
+    ls              -- List metacontent of node
 
     isdataset       -- Self-explanatory convenience method
     isgroup         -- Self-explanatory convenience method
@@ -53,11 +53,13 @@ Note
 import logging
 
 from openmetadata import lib
+from openmetadata import bug
 from openmetadata import error
 from openmetadata import service
 
-SEP = service.SEP
+METASEP = '/'
 LOG = logging.getLogger('openmetadata.api')
+
 
 # Objects
 
@@ -82,7 +84,7 @@ History = lib.History
 
 
 def _precheck(node):
-    if hasattr(node, 'children'):
+    if node.haschildren:
         for child in node:
             _precheck(child)
     else:
@@ -99,31 +101,28 @@ def dump(node, nohistory=False, simulate=False):
         is modified in any way prior to this method being called.
 
     """
-
     _precheck(node)
     _dump(node, nohistory, simulate)
 
 
 def _dump(node, nohistory=False, simulate=False):
-    errors = []
-
-    if hasattr(node, 'children'):
+    if node.haschildren:
         for child in node:
             _dump(child)
 
     else:
+        assert node.path.suffix, bug.suffix_not_resolved()
+
         dataset = node
 
         path = dataset.path.as_str
+
         data = node.dump()
 
         if not simulate:
             if node.isdirty:
                 if not nohistory:
-                    try:
-                        _make_history(node)
-                    except ValueError as e:
-                        errors.append(e)
+                    _make_history(node)
 
                 service.dump(path, data)
 
@@ -133,21 +132,20 @@ def _dump(node, nohistory=False, simulate=False):
         else:
             LOG.info("_dump(): Successfully simulated dump: %r" % path)
 
-    if errors:
-        LOG.error("There were errors:")
-        for err in errors:
-            LOG.error(str(err))
 
-
-def pull(node):
+def pull(node, lazy=False, depth=1, merge=False, _level=1):
     """
     Main mechanism with which to read data from disk into memory.
 
-    Features
-        '.'  -- Names starting with a dot (.) are invisible
-                to regular operation and may be used by other
-                mechanisms for other purposes; such as meta-
-                metadata and history.
+    Parameters
+        depth   -- How many levels of a hierarchy to pull
+                   Example
+                        parent           <-- level 0
+                        |-- child        <-- level 1
+                            |-- dataset  <-- level 2
+        lazy    -- Only pull when no data is present
+        merge   -- Preserve existing data
+
 
     """
 
@@ -155,6 +153,9 @@ def pull(node):
         node.isdirty = False
 
         raise error.Exists("%s does not exist" % node.path.as_str)
+
+    if lazy and node.hasdata:
+        return node
 
     if isinstance(node, lib.History):
         """
@@ -169,7 +170,10 @@ def pull(node):
 
         """
 
-        dirs, files = service.readdir(node.path.as_str)
+        dirs, files = service.ls(node.path.as_str)
+
+        if not merge:
+            node.clear()
 
         for imprint in dirs + files:
             lib.Imprint(imprint, parent=node)
@@ -187,7 +191,8 @@ def pull(node):
 
         """
 
-        node.data = service.readfile(node.path.as_str)
+        data = service.open(node.path.as_str)
+        node.load(data)
 
     elif isinstance(node, lib.Group) or isinstance(node, lib.Location):
         """
@@ -206,7 +211,17 @@ def pull(node):
 
         """
 
-        dirs, files = service.readdir(node.path.as_str)
+        path = node.path.as_str
+        if hasattr(node, 'resolved_path'):
+            path = node.resolved_path.as_str
+
+        try:
+            dirs, files = service.ls(path)
+        except ValueError as e:
+            raise error.Exists(e)
+
+        if not merge:
+            node.clear()
 
         for dir_ in dirs:
             if dir_ == lib.HISTORY:
@@ -234,27 +249,24 @@ def pull(node):
 
     node.isdirty = False
 
-    return node
+    # Recursively pull until `depth` is reached
+    _level += 1
+    if not _level > depth:
+        if node.haschildren:
+            for child in node:
+                if isblob(child):
+                    continue
 
-
-def lazy_pull(node):
-    """Only pull if `node` doesn't already have data
-
-    This is the direct equivalent to
-        >> if not node.hasdata:
-        >>     pull(node)
-
-    """
-
-    if not node.hasdata:
-        pull(node)
+                print "Also pulling %r" % child.path
+                # print "Also pulling %r" % child
+                pull(child, lazy, depth, _level)
 
     return node
 
 
 def remove(node, permanent=False):
     """Remove `node` from database, either to trash or permanently"""
-    assert isinstance(node, lib.Node)
+    assert isinstance(node, lib.Node), bug.not_a_node(node)
 
     if not exists(node):
         LOG.warning("remove(): %s did not exist" % node.path.as_str)
@@ -265,29 +277,28 @@ def remove(node, permanent=False):
         LOG.info("remote(): Permanently removed %r" % node.path.as_str)
         return
 
-    dirname = node.parent.path.as_str
-    basename = node.path.basename
-    trash = service.SEP.join([dirname, lib.TRASH])
+    trash_path = node.path + lib.TRASH
 
-    # Ensure node.path.name is unique in trash, as per RFC14
-    if service.exists(trash):
-        dirs, files = service.readdir(trash)
+    # Ensure node.path.name is unique in trash_path, as per RFC14
+    if service.exists(trash_path.as_str):
+        dirs, files = service.ls(trash_path)
         for trashed in dirs + files:
             trash_name = trashed.split(node.EXT, 1)[0]
             if node.path.name == trash_name:
                 # An existing copy of this node is
-                # already in the trash. Permanently remove it.
+                # already in the trash_path. Permanently remove it.
                 LOG.info("remove(): Removing exisisting "
                          "%r from trash" % node.path.name)
-                existing_trashed_path = service.SEP.join([trash, trashed])
-                service.remove(existing_trashed_path)
+                existing_trashed_path = trash_path + trashed
+                service.remove(existing_trashed_path.as_str)
 
-    deleted_path = service.SEP.join([trash, basename])
+    basename = node.path.basename
+    deleted_path = trash_path + basename
 
-    assert not service.exists(deleted_path), \
-        "This should have been taken care of above"
+    assert not service.exists(deleted_path.as_str), \
+        bug.not_deleted(deleted_path.as_str)
 
-    service.move(node.path.as_str, deleted_path)
+    service.move(node.path.as_str, deleted_path.as_str)
     LOG.info("remove(): Successfully removed %r" % node.path.as_str)
 
     return True
@@ -296,7 +307,7 @@ def remove(node, permanent=False):
 def hasdata(path, metapath):
     """Convenience-method for querying the existance metadata"""
     try:
-        metadata(path, metapath)
+        read(path, metapath, native=False)
     except error.Exists:
         return False
     return True
@@ -304,23 +315,43 @@ def hasdata(path, metapath):
 
 def exists(node):
     """Check if `node` exists under any suffix"""
+    if not node.hasparent:
+        return False
+
     if isinstance(node, lib.Imprint):
         return service.exists(node.path.as_str)
 
-    if not service.exists(node.parent.path.as_str):
+    existing = []
+    path = node.path.parent.as_str
+
+    if not service.exists(path):
         return False
 
-    existing = []
-    dirs_, files_ = service.readdir(node.parent.path.as_str)
-    for entry in dirs_ + files_:
-        existing.append(entry.split(".")[0])
+    dirs_, files_ = service.ls(path)
 
+    for entry in dirs_ + files_:
+        existing.append(entry.split(lib.Path.EXT)[0])
+
+    # name = node.path.name
     return node.path.name in existing
 
 
 # ---------------------------------------------------------------------
 #
+# Object-oriented Metadata, RFC12
+# http://rfc.abstractfactory.io/spec/12/
+#
+# ---------------------------------------------------------------------
+
+
+def inherit(node):
+    raise NotImplementedError
+
+
+# ---------------------------------------------------------------------
+#
 # Temporal Metadata, RFC14
+# http://rfc.abstractfactory.io/spec/14/
 #
 # ---------------------------------------------------------------------
 
@@ -337,13 +368,13 @@ def versions(node):
 
     parent = node.parent
 
-    lazy_pull(parent)
+    pull(parent, lazy=True)
 
-    versions_node = parent.children_as_dict.get(lib.VERSIONS)
+    versions_node = parent[lib.VERSIONS]
     if versions_node is None:
         return
 
-    lazy_pull(versions_node)
+    pull(versions_node, lazy=True)
 
     # TODO: potential bottleneck
     versions = [ver for ver in versions_node]
@@ -366,41 +397,48 @@ def history(node):
     """Return history of `node`"""
     parent = node.parent
 
-    lazy_pull(parent)
+    pull(parent, lazy=False)
 
-    history_node = parent.children_as_dict.get(lib.HISTORY)
-    if history_node is None:
-        return
+    try:
+        history_node = parent[lib.HISTORY]
+    except KeyError:
+        LOG.warning("No history found for %r" % node)
+        return []
 
-    lazy_pull(history_node)
+    pull(history_node, lazy=True)
 
     # TODO: potential bottleneck
     imprints = [imp for imp in history_node]
     imprints = sorted(imprints, reverse=True)
 
-    for imprint in imprints:
-        if imprint == node:
-            yield imprint
+    def generator(imprints):
+        for imprint in imprints:
+            if imprint == node:
+                yield imprint
+
+    return generator(imprints)
 
 
 def restore(imprint, keephistory=False):
     """Restore `imprint` to target from history"""
     assert isinstance(imprint, lib.Imprint)
     LOG.info("restore(): Restoring %r" % imprint.path)
-    lazy_pull(imprint)
+    pull(imprint, lazy=True)
 
     target_parent = imprint.parent.parent
 
-    neighbours = target_parent.children_as_dict
-    target = neighbours.get(imprint.target_name)
-    if not target:
+    try:
+        target = target_parent[imprint.path.name]
+    except KeyError:
         # If target doesn't exist, the imprint is
         # being restored into a new dataset.
-        name = imprint.target_basename
+        name = imprint.path.basename
         target = Dataset(name, parent=target_parent)
 
     # Update target with historical data
-    previous_value = imprint.children_as_dict.get('value')
+    assert 'value' in imprint, 'There is a bug'
+
+    previous_value = imprint['value']
     current_value = target.data
     target.data = pull(previous_value).data
 
@@ -420,13 +458,14 @@ def restore(imprint, keephistory=False):
 
 def _make_history(node):
     """Create an imprint of `node` as per RFC14"""
+    assert isdataset(node)
 
-    if not exists(node):
+    if not service.exists(node.path.as_str):
         # Only create history for nodes
         # that are being updated.
         return
 
-    lazy_pull(node)
+    pull(node, lazy=True)
 
     parent = node.parent
     basename = node.path.basename
@@ -440,27 +479,31 @@ def _make_history(node):
     node.data = current_value
 
     # Construct history group
-    history = Group(lib.HISTORY, parent=parent)
+    history = History(lib.HISTORY, parent=parent)
     imprint = Imprint(imprint_name, parent=history)
-    Dataset('user', data='marcus', parent=imprint)
-    Dataset('value', data=previous_value, parent=imprint)
+
+    print imprint_name
+    # Dataset('user', data='marcus', parent=imprint)
+
+    # lib.python_to_string(type(previous_value))
+    # Dataset('value', data=previous_value, parent=imprint)
 
     assert not service.exists(imprint.path.as_str), \
         "%s already exists" % imprint.path
 
-    dump(history)
+    # dump(history)
 
     LOG.info("_make_history(): Successfully made history for %s (value=%s)"
              % (node.path.as_str, node.data))
 
 
-def _make_version(node):
+def _make_version(node, padding=3):
     if not exists(node):
         # Only create history for nodes
         # that are being updated.
         return
 
-    lazy_pull(node)
+    pull(node, lazy=True)
 
     parent = node.parent
 
@@ -472,7 +515,8 @@ def _make_version(node):
     if service.exists(versions.path.as_str):
         count = service.count(versions.path.as_str)
 
-    imprint_name = 'v%03d' % (count + 1)
+    syntax = 'v%0' + str(padding) + 'd'
+    imprint_name = syntax % (count + 1)
 
     imprint = Imprint(imprint_name, parent=versions)
     Dataset('user', data='marcus', parent=imprint)
@@ -483,7 +527,8 @@ def _make_version(node):
 
     dump(versions)
 
-    LOG.info("_make_history(): Successfully made a version of %s" % node.path.as_str)
+    LOG.info("_make_history(): Successfully made a version of %s"
+             % node.path.as_str)
 
 
 # ---------------------------------------------------------------------
@@ -507,7 +552,7 @@ def dumps(node):
     if not node.hasdata:
         pull(node)
 
-    if hasattr(node, 'children'):
+    if node.haschildren:
         for child in node:
             root[child.name] = dumps(child)
     else:
@@ -516,14 +561,15 @@ def dumps(node):
     return root
 
 
-def metadata(path, metapath=None):
-    """Retrieve Open Metadata objects via `path` and `metapath`
+def read(path, metapath=None, native=True):
+    """Retrieve Python objects via `path` and `metapath`
 
-    Description
+    Parameters
         path        -- Absolute path to associated directory
         metapath    -- A concatenated path to metadata
                        e.g. '/parent/child/subchild'
-
+        native      -- Return native python objects
+                       False
     """
 
     location = lib.Location(path)
@@ -532,7 +578,7 @@ def metadata(path, metapath=None):
 
     root = location
 
-    parts = metapath.split(Node.SEP)
+    parts = metapath.split(lib.Path.METASEP)
 
     while parts:
         pull(root)
@@ -542,10 +588,10 @@ def metadata(path, metapath=None):
             current = parts.pop(0)
 
         # Remove suffix for query
-        name, suffix = (current.rsplit(Node.EXT, 1) + [None])[:2]
+        name, suffix = (current.rsplit(lib.Path.EXT, 1) + [None])[:2]
 
         try:
-            root = root.children_as_dict[name]
+            root = root[name]
 
             # If metapath included a suffix,
             # ensure the child we fetch match this suffix.
@@ -556,29 +602,21 @@ def metadata(path, metapath=None):
         except KeyError:
             raise error.Exists("%s does not exist" % name)
 
-    return root
-
-
-def read(path, metapath=None):
-    """Retrieve Python objects via `path` and `metapath`"""
-    root = metadata(path, metapath)
     pull(root)
 
-    if isgroup(root) or islocation(root):
-        children = []
-        for child in root:
-            children.append(child.name)
-        return children
+    if root.haschildren:
+        if native:
+            children = []
+            for child in root:
+                children.append(child.path.name)
+            return children
+        else:
+            return root.children
 
-    return root.data
-
-
-# def read_as_dict(path, metapath):
-#     result = {}
-#     for node in read(path, metapath):
-#         result[node.path.name] = node
-
-#     return result
+    if native:
+        return root.data
+    else:
+        return root
 
 
 def write(path, metapath, data=None):
@@ -592,8 +630,7 @@ def write(path, metapath, data=None):
 
     location = lib.Location(path)
 
-    # metapaths = list(metapaths)
-    parts = metapath.split(Node.SEP)
+    parts = metapath.split(METASEP)
     dataset = parts.pop()
     groups = parts
     root = location
@@ -613,6 +650,18 @@ def write(path, metapath, data=None):
 
 
 def ls(root, depth=1, _level=0):
+    """List contents of `root`
+
+    Example
+        >>> group = Group('a group')
+        >>> child1 = Dataset('a child', parent=group)
+        >>> child2 = Dataset('another child', parent=group)
+        >>> ls(group)
+        a child
+        another child
+
+    """
+
     if isinstance(root, basestring):
         root = Location(root)
 
@@ -620,8 +669,9 @@ def ls(root, depth=1, _level=0):
     if _level > depth:
         return
 
-    if hasattr(root, 'children'):
-        pull(root)
+    if root.haschildren:
+        if exists(root):
+            pull(root, merge=True)
 
         for node in root:
             print '\t' * (_level-1) + node.path.name
@@ -629,23 +679,27 @@ def ls(root, depth=1, _level=0):
 
 
 def islocation(node):
-    return True if isinstance(node, lib.Location) else False
+    return isinstance(node, lib.Location)
+
+
+def isblob(node):
+    return isinstance(node, lib.Blob)
 
 
 def isdataset(node):
-    return True if isinstance(node, lib.Dataset) else False
+    return isinstance(node, lib.Dataset)
 
 
 def isgroup(node):
-    return True if isinstance(node, lib.Group) else False
+    return isinstance(node, lib.Group)
 
 
 def isimprint(node):
-    return True if isinstance(node, lib.Imprint) else False
+    return isinstance(node, lib.Imprint)
 
 
 def ishistory(node):
-    return True if isinstance(node, lib.History) else False
+    return isinstance(node, lib.History)
 
 
 # Convenience wrappers
@@ -666,12 +720,12 @@ __all__ = [
     'History',
 
     # Main functionality
-    'metadata',
     'dump',
     # 'dumps',  # On-hold, due to ambivalent functionality
     'read',
     'write',
     'pull',
+    'ls',
     'exists',
     'restore',
     'remove',
@@ -680,6 +734,7 @@ __all__ = [
     # Convenience functionality
     # 'listdir',  # On-hold, possibly frivilous
     'hasdata',
+    'islocation',
     'isdataset',
     'isgroup',
     'ishistory',
@@ -689,37 +744,20 @@ __all__ = [
 
 
 if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
+
     # from pprint import pprint
     import openmetadata as om
     om.setup_log('openmetadata')
 
     path = r'c:\users\marcus\om2'
-    # ls(path, depth=1)
-    print read(path, None)
-
-    # print exists(path, 'age2')
-    # age = om.metadata(path, '/age')
-    # print repr(age)
-    # age = om.metadata(path, 'age')
-    # print repr(age)
-    # om.pull(age)
-
-    # previous = age.data
-
-    # age.data = age.data + 1
-    # om.dump(age)
-
-    # _make_version(age)
-
-    # print new_imprint.time > old_imprint.time
-    # print older_imprint.time > older_imprint.time
-    # print imprint.time
-    # imprint = om.history(age).next()
-    # print "Previous: %s" % previous
-    # print "Current: %s" % om.dumps(imprint)
-
-    # om.restore(new_imprint)
-    # om.pull(imprint)
-    # print om.dumps(imprint)
-    
-    # print dumps(Location(path))
+    location = om.Location(path)
+    om.pull(location)
+    history = location['.history']
+    om.pull(history)
+    # gen = history.children
+    # gen.next()
+    # age = om.history(location['age'])
+    # imprint = age.next()
+    # om.restore(imprint)

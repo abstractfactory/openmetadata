@@ -1,14 +1,12 @@
 import abc
+import json
 import logging
 
 from openmetadata import service
 from openmetadata import error
 from openmetadata import path
+from openmetadata import bug
 
-# EXT = '.'
-# DIV = '&'
-SEP = service.SEP
-CONTAINER = '.meta'
 HISTORY = '.history'
 VERSIONS = '.versions'
 TRASH = '.trash'
@@ -36,8 +34,21 @@ class Node(object):
 
     __metaclass__ = abc.ABCMeta
 
-    SEP = '/'
-    EXT = '.'
+    default_value = None
+
+    def __iter__(self):
+        for child in self.children:
+            yield child
+
+    def __getitem__(self, item):
+        try:
+            return self._children[item]
+        except KeyError:
+            raise KeyError("%r not in %r"
+                           % (item, self))
+
+    def __contains__(self, key):
+        return key in self._children
 
     def __str__(self):
         return self.path.name
@@ -59,8 +70,8 @@ class Node(object):
     def __hash__(self):
         return hash(str(self))
 
-    @abc.abstractmethod  # Prevent from direct instantiation
-    def __init__(self, path):
+    @abc.abstractmethod  # Prevent direct instantiation
+    def __init__(self, path, data=None, parent=None):
         if isinstance(path, basestring):
             path = Path(path)
 
@@ -69,9 +80,24 @@ class Node(object):
         self._suffix = None  # cache
         self._isvalid = None
 
+        self._children = {}
+        self._data = None
+        self._parent = parent
+
+        print "Setting %s to %s" % (data, self)
+        if data:
+            self.data = data
+
+        if parent:
+            parent.add(self)
+
+    @property
+    def relativepath(self):
+        return self._path
+
     @property
     def path(self):
-        path = self._path
+        path = self.relativepath
 
         if hasattr(self, 'parent'):
             parent = self.parent
@@ -121,6 +147,76 @@ class Node(object):
 
         return self._type
 
+    def add(self, child):
+        print "Adding %s to %s" % (child, self)
+        path = child._path
+        key = path.name
+
+        if path.hasoption:
+            key += path.OPTIONDIV + path.option
+
+        if key in self._children:
+            self.LOG.warning("%s was overwritten" % child.path)
+
+        self._children[key] = child
+
+    def clear(self):
+        """Remove existing data/children"""
+        while self._children:
+            self._children.popitem()
+
+        self._data = None
+
+    @property
+    def children(self):
+        for child in self._children.values():
+            yield child
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def data(self):
+        if self._data is None:
+            return self.default_value
+        return self.type(self._data)
+
+    @data.setter
+    def data(self, data):
+        if data is None:
+            self._data = data
+            return
+
+        # If data remains unchanged, don't
+        # bother altering the `isdirty` bool.
+        if data == self._data:
+            return
+
+        if not self.type:
+            self._type = data.__class__
+
+        # Resolve suffix by Python-type
+        if not self.path.suffix:
+            suffix = python_to_string(self.type)
+            self._path = self.relativepath.copy(suffix=suffix)
+
+        assert self.path.suffix, bug.suffix_not_resolved()
+
+        try:
+            data = self.type(data)
+
+        except TypeError:
+            raise TypeError("Item has no type")
+
+        except ValueError:
+            raise ValueError('Data-type %r, expected %r'
+                             % (data.__class__.__name__,
+                                self.type.__name__))
+
+        self._data = data
+        self.isdirty = True
+
     @property
     def isvalid(self):
         if self._isvalid is None:
@@ -132,20 +228,16 @@ class Node(object):
     def hasdata(self):
         return True if getattr(self, 'data', None) else False
 
-
-class TreeNode(Node):
+    @property
+    def haschildren(self):
+        return self._children != {}
 
     @property
-    def children(self):
-        for child in self._children.values():
-            yield child
-
-    @property
-    def children_as_dict(self):
-        return self._children
+    def hasparent(self):
+        return self.parent is not None
 
 
-class Location(TreeNode):
+class Location(Node):
     """
     .    ____
     |   |    |
@@ -163,27 +255,19 @@ class Location(TreeNode):
 
     LOG = logging.getLogger('openmetadata.lib.Location')
 
-    def __iter__(self):
-        for child in self.children:
-            yield child
+    def __init__(self, *args, **kwargs):
+        super(Location, self).__init__(*args, **kwargs)
 
-    def __init__(self, path):
-        super(Location, self).__init__(path)
-
-        if not service.isabsolute(path):
+        if not self._path.isabsolute:
             raise error.RelativePath('Path must be absolute: %s' % path)
 
-        assert service.exists(path)
-        self._children = {}
+        if not service.exists(self.path.as_str):
+            raise error.Exists("The path to a Location object "
+                               "must previously exist")
 
     def copy(self, path=None):
         node = self.__class__(path or self.path)
         return node
-
-    def add(self, child):
-        if child._path.name in self._children:
-            self.LOG.warning("%s was overwritten" % child.path)
-        self._children[child._path.name] = child
 
     @property
     def data(self):
@@ -191,13 +275,24 @@ class Location(TreeNode):
 
     @property
     def resolved_path(self):
-        return self.path + CONTAINER
+        return self.path + self._path.CONTAINER
+
+    # @property
+    # def parent(self):
+    #     """Return physical parent"""
+    #     parent_path = self._path.parent
+    #     print parent_path
+        # return self.copy(parent_path)
 
     def dump(self):
         raise NotImplementedError
 
+    @property
+    def hasparent(self):
+        return True
 
-class Group(TreeNode):
+
+class Group(Node):
     """
      ____
     |    |_______
@@ -216,22 +311,11 @@ class Group(TreeNode):
         for child in self.children:
             yield child
 
-    def __init__(self, path, parent=None):
-        super(Group, self).__init__(path)
+    def __init__(self, *args, **kwargs):
+        super(Group, self).__init__(*args, **kwargs)
 
-        if service.isabsolute(path):
+        if self._path.isabsolute:
             raise error.RelativePath('Path must be relative: %s' % path)
-
-        self._children = {}
-        self.parent = parent
-
-        if parent:
-            parent.add(self)
-
-    def add(self, child):
-        if child.path.name in self._children:
-            self.LOG.info("WARNING: %s was overwritten" % child.path.name)
-        self._children[child.path.name] = child
 
     @property
     def data(self):
@@ -256,67 +340,27 @@ class Blob(Node):
 
     """
 
-    def __init__(self, path, data=None, parent=None):
-        super(Blob, self).__init__(path)
+    def __init__(self, *args, **kwargs):
+        super(Blob, self).__init__(*args, **kwargs)
 
         if self._path.isabsolute:
-            raise error.RelativePath('Path must be relative: %s' % self._path)
-
-        if not self._path.suffix:
-            raise error.Suffix('Path must include suffix')
-
-        self._data = None
-        self.parent = parent
+            raise error.RelativePath('Path must be relative: %r'
+                                     % self.path.as_str)
 
         # Nodes are dirty until they are pulled, and
         # made dirty again via setattr(self.data)
         self.isdirty = True
 
-        if data is not None:
-            self.data = data
-
-        if parent:
-            parent.add(self)
-
-    @property
-    def data(self):
-        if self._data is None:
-            return self.default_value
-        return self.type(self._data)
-
-    @data.setter
-    def data(self, data):
-        if data is None:
-            self._data = data
-            return
-
-        # If data remains unchanged, don't
-        # bother altering the `isdirty` bool.
-        if data == self._data:
-            return
-
-        if not self.type:
-            self._type = data.__class__
-
-        print self._type
-
-        try:
-            data = self.type(data)
-
-        except TypeError:
-            raise TypeError("Item has no type")
-
-        except ValueError:
-            raise ValueError('Data-type %r, expected %r'
-                             % (data.__class__.__name__,
-                                self.type.__name__))
-
-        self._data = data
-        self.isdirty = True
+    def load(self, data):
+        raise NotImplementedError
 
     def dump(self):
         """To dump a blob means to hardlink"""
-        return self.path.as_str
+        return json.dumps(self.path.as_str)
+
+    @property
+    def haschildren(self):
+        return False
 
 
 class Dataset(Blob):
@@ -332,14 +376,17 @@ class Dataset(Blob):
 
     """
 
-    def dump(self):
-        """
-        Dump Python data-type to disk, unless it is None,
-        in which case dump nothing.
+    def load(self, data):
+        """De-serialise `data` into `self`"""
+        self.data = json.loads(data)
 
-        """
-        assert self.path.suffix is not None
-        return str(self.data) if self.data is not None else ''
+    def dump(self):
+        """Serialise contents of `self`"""
+
+        if self.data is None:
+            return ''
+
+        return json.dumps(self.data)
 
     def __getattr__(self, metaattr):
         """Retrieve meta-metadata as per RFC15"""
@@ -360,50 +407,9 @@ class Version(Group):
 
 
 class Imprint(Group):
-    def __str__(self):
-        """This is used when comparing with other objects"""
-        return self.target_name
-
-    def __init__(self, path, data=None, parent=None):
-        super(Imprint, self).__init__(path)
-        self._data = None
+    def __init__(self, *args, **kwargs):
+        super(Imprint, self).__init__(*args, **kwargs)
         self._time = None
-        self.parent = parent
-
-        if data is not None:
-            self.data = data
-
-        if parent:
-            parent.add(self)
-
-    @property
-    def name(self):
-        """
-        In the case of imprints, keep full name, since we want
-        to enable multiple names to exist within history.
-
-        E.g.
-            some data.string&date1
-            some data.string&date2
-
-        If just the name is kept, only one of these would
-        be retrievable since children are stored in a
-        dictionary using their name for keys.
-
-        """
-        return self.path.basename + self.OPTIONDIV + self.option
-
-    @property
-    def target_name(self):
-        return self.path.name
-
-    @property
-    def target_suffix(self):
-        return self.path.suffix
-
-    @property
-    def target_basename(self):
-        return self.path.basename
 
     @property
     def time(self):
@@ -619,29 +625,32 @@ if __name__ == '__main__':
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
-    print location.path
 
     # # Add a regular string
-    # ostring = om.Dataset('simple_data', parent=location)
-    # ostring = om.Dataset('simple_data')
-    # ostring.data = 'my simple string'
+    ostring = om.Dataset('simple_data.string', data='whop', parent=location)
+    ostring = om.Dataset('test.bool', data=False, parent=location)
+    # print ostring.data
+    # ostring.data = 5
+    # print ostring.data
+    # print ostring.dump()
     # print om.exists(ostring)
     # print ostring.path
 
     # # Add text
-    # text = om.Dataset('story.text', parent=location)
-    # text.data = 'There once was a boy'
+    text = om.Dataset('story.text', parent=location)
+    text.data = 'There once was a boy'
 
     # # Add a list
     olist = om.Group('mylist.list', parent=location)
 
     # # Containing three datasets..
-    # l1 = om.Dataset(path='item1.string', data='a string value', parent=olist)
-    # l2 = om.Dataset(path='item2.bool', data=True, parent=olist)
-    # l3 = om.Dataset(path='item3.int', data=5, parent=olist)
+    l1 = om.Dataset(path='item1', data='a string value', parent=olist)
+    l2 = om.Dataset(path='item2', data=True, parent=olist)
+    l3 = om.Dataset(path='item3', data=5, parent=olist)
 
+    # om.ls(olist)
     # # ..and a dictionary..
-    odict = om.Group(path='mydict.dict', parent=olist)
+    # odict = om.Group(path='mydict.dict', parent=olist)
 
     # # ..with tree keys
     # key1 = om.Dataset('key1.string', data='value', parent=odict)
@@ -651,10 +660,11 @@ if __name__ == '__main__':
     # key2 = om.Dataset('key2', data=True, parent=odict)
     # print key2.path.suffix
 
-    text = om.Dataset('story.text', parent=odict)
-    text.data = 'There once was a boy'
+    # text = om.Dataset('story.text', parent=odict)
+    # text.data = 'There once was a boy'
+    # print repr(odict['story'])
 
-    print text.path
+    # print text.path
     # print text.path.meta
 
     # Finally, write it to disk.

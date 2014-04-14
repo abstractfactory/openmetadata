@@ -44,6 +44,6 @@ om.write(path, '/root/group/amazing', True)
 
 # --------- Read it back in
 
-assert om.read(path, 'root/group/amazing') is True
-assert om.read(path, 'status') is True
-assert om.read(path, 'age') == 27
+assert om.read(path, '/root/group/amazing') is True
+assert om.read(path, '/status') is True
+assert om.read(path, '/age') == 27

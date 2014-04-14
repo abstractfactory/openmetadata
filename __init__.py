@@ -16,7 +16,8 @@ def get_formatter():
     return formatter
 
 
-def setup_log(root, level=None):
+def setup_log(root=None, level=None):
+    root = root or 'openmetadata'
     log = logging.getLogger(root)
 
     if not level:

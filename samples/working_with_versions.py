@@ -4,8 +4,6 @@ This module provides examples for working with versions
 
 """
 
-raise NotImplementedError
-
 import os
 import openmetadata as om
 

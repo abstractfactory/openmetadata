@@ -43,9 +43,10 @@ class Path(object):
     CURRENT_DIR = '.'
     CONTAINER = '.meta'
     OPTIONDIV = '&'
-    FAMILY = None
     SEPARATOR = '/'
-    INTSEP = '/'  # Internal Separator
+    METASEP = '/'  # Separator of metapaths
+    PROCSEP = '/'  # Separator of `processing` (see above)
+    FAMILY = None
 
     SuffixPattern = re.compile(r'\..*$')
     EscapePattern = re.compile(r'\\')
@@ -99,8 +100,35 @@ class Path(object):
         self.__as_raw = None
         self.__as_str = None
 
-    def copy(self, path=None):
-        return self.__class__(path or self._path)
+    def copy(self, path=None, suffix=None):
+        """
+        Example
+            >>> path = Path('/home/marcus/file.exe')
+            >>> path.copy()
+            Path('/home/marcus/file.exe')
+
+            >>> path.copy(path='/new/path.bat')
+            Path('/new/path.bat')
+
+            >>> path.copy(suffix='bat')
+            Path('/home/marcus/file.bat')
+
+            >>> path = Path('/home/no/suffix')
+            >>> path.copy(suffix='exe')
+            Path('/home/no/suffix.exe')
+
+        """
+
+        path = path or self._path
+
+        if suffix:
+            # Add or replace suffix
+            current_suffix = self.suffix
+            if current_suffix:
+                path = path[:-(len(current_suffix) + 1)]
+            path = path + self.EXT + suffix
+
+        return self.__class__(path)
 
     @classmethod
     def parse(cls, path):
@@ -182,7 +210,7 @@ class Path(object):
     def basename(self):
         """Return name including suffix"""
         path = self._path
-        basename = path.rsplit(self.INTSEP, 1)[-1]
+        basename = path.rsplit(self.PROCSEP, 1)[-1]
         return basename or path
 
     @property
@@ -202,7 +230,7 @@ class Path(object):
         _, metapath_wsuffix = self._path.rsplit(self.CONTAINER, 1)
 
         metapath = ''
-        for part in metapath_wsuffix.split(self.INTSEP):
+        for part in metapath_wsuffix.split(self.PROCSEP):
             if not part:
                 continue
 
@@ -225,7 +253,7 @@ class Path(object):
 
     @property
     def location(self):
-        return self._path.split(self.CONTAINER, 1)[0]
+        return self.__class__(self._path.split(self.CONTAINER, 1)[0])
 
     @property
     def parent(self):
@@ -265,6 +293,31 @@ class Path(object):
             parent = parent.parent
 
         return parents
+
+    @property
+    def parts(self):
+        r"""Return each component of a `path`
+
+        Example
+            >>> path = Path('/home/marcus/file.exe')
+            >>> path.parts
+            ['', 'home', 'marcus', 'file.exe']
+
+            >>> path = Path('relative/path/file.exe')
+            >>> path.parts
+            ['relative', 'path', 'file.exe']
+
+            >>> path = WindowsPath(r'c:\users\marcus\file.exe')
+            >>> path.parts
+            ['', 'c', 'users', 'marcus', 'file.exe']
+
+            >>> path = WindowsPath(r'relative\path\file.exe')
+            >>> path.parts
+            ['relative', 'path', 'file.exe']
+
+        """
+
+        return self.as_raw.split(self.PROCSEP)
 
     @property
     def body(self):
@@ -312,7 +365,7 @@ class Path(object):
         """Return string without deparsing"""
         if not self.__as_raw:
             self.__as_raw = self._path
-            if self.hasoptions:
+            if self.hasoption:
                 self.__as_raw += self.OPTIONDIV + self.__option
         return self.__as_raw
 
@@ -332,7 +385,7 @@ class Path(object):
 
         if not self.__as_str:
             self.__as_str = self.deparse()
-            if self.hasoptions:
+            if self.hasoption:
                 self.__as_str += self.OPTIONDIV + self.__option
         return self.__as_str
 
@@ -349,16 +402,8 @@ class Path(object):
         return True if self._path == '/' else False
 
     @property
-    def hasoptions(self):
+    def hasoption(self):
         return self.__option is not None
-
-
-class UnknownPath(Path):
-    """Used where type of path couldn't be determined"""
-
-
-class VirtualPath(Path):
-    """Non-existant paths"""
 
 
 class DirPath(Path):

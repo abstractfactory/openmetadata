@@ -3,6 +3,7 @@
 import os
 import time
 import shutil
+import __builtin__
 
 SEP = os.sep
 OSNAME = os.name
@@ -80,25 +81,26 @@ def copy(source, target):
     shutil.copy2(source, target)
 
 
+def commit(node):
+    """Stage `node`"""
+
+
 def push():
-    """Retrieve locally-stored data and dump it"""
+    """Retrieve commited data and dump it"""
 
 
-def readdir(path):
+def ls(path):
     """Retrieve remotely-stored data"""
+    if not os.path.exists(path):
+        raise ValueError(path)
     for _, dirs, files in os.walk(path):
         return dirs, files
 
 
-def readfile(path):
-    with open(path, 'r') as f:
+def open(path):
+    with __builtin__.open(path, 'r') as f:
         data = f.read()
     return data
-
-
-def commit(node):
-    """Temporarily store `node` on the local hard-drive"""
-    pass
 
 
 def dump(path, data):
@@ -106,7 +108,7 @@ def dump(path, data):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    with open(path, 'w') as f:
+    with __builtin__.open(path, 'w') as f:
         f.write(data)
 
     return True
