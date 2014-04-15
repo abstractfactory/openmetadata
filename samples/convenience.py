@@ -13,10 +13,7 @@ import openmetadata as om
 om.setup_log('openmetadata')
 
 # Starting-point
-path = os.path.expanduser(r'~\om_temp')
-
-if not os.path.exists(path):
-    os.mkdir(path)
+path = os.path.expanduser(r'~')
 
 om.write(path, 'status', True)
 om.write(path, 'story', 'There once was a boy')

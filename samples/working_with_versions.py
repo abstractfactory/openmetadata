@@ -4,14 +4,13 @@ This module provides examples for working with versions
 
 """
 
+raise NotImplementedError
+
 import os
 import openmetadata as om
 
 # Starting-point
-path = os.path.expanduser(r'~\om_temp')
-
-if not os.path.exists(path):
-    os.mkdir(path)
+path = os.path.expanduser(r'~')
 
 location = om.Location(path)
 

@@ -84,7 +84,7 @@ class Node(object):
         self._data = None
         self._parent = parent
 
-        if data:
+        if data is not None:
             self.data = data
 
         if parent:
@@ -92,6 +92,18 @@ class Node(object):
 
     @property
     def relativepath(self):
+        # Resolve suffix
+        # if not self._path.suffix:
+        #     data = self._data
+
+        #     if self._data is None:
+        #         dt = None
+        #     else:
+        #         dt = type(data)
+
+        #     suffix = python_to_string(dt)
+        #     self._path = self._path.copy(suffix=suffix)
+
         return self._path
 
     @property
@@ -178,10 +190,13 @@ class Node(object):
     def data(self):
         if self._data is None:
             return self.default_value
-        return self.type(self._data)
+        return self._data
 
     @data.setter
     def data(self, data):
+        if not self.path.suffix:
+            self._resolve_suffix(data)
+
         if data is None:
             self._data = data
             return
@@ -194,13 +209,6 @@ class Node(object):
         if not self.type:
             self._type = data.__class__
 
-        # Resolve suffix by Python-type
-        if not self.path.suffix:
-            suffix = python_to_string(self.type)
-            self._path = self.relativepath.copy(suffix=suffix)
-
-        assert self.path.suffix, bug.suffix_not_resolved()
-
         try:
             data = self.type(data)
 
@@ -208,12 +216,22 @@ class Node(object):
             raise TypeError("Item has no type")
 
         except ValueError:
-            raise ValueError('Data-type %r, expected %r'
-                             % (data.__class__.__name__,
+            raise ValueError('%r: %r, expected %r'
+                             % (data,
+                                data.__class__.__name__,
                                 self.type.__name__))
 
         self._data = data
         self.isdirty = True
+
+    def _resolve_suffix(self, data=None):
+        dt = type(data)
+
+        if data is None:
+            dt = None
+
+        suffix = python_to_string(dt)
+        self._path = self.relativepath.copy(suffix=suffix)
 
     @property
     def isvalid(self):
@@ -369,20 +387,19 @@ class Dataset(Blob):
 
     def load(self, data):
         """De-serialise `data` into `self`"""
-        self.data = json.loads(data)
+        try:
+            self.data = json.loads(data)
+        except ValueError:
+            raise error.Serialisation("%s contains invalid data" % self.path)
 
     def dump(self):
         """Serialise contents of `self`"""
-
-        if self.data is None:
-            return ''
-
         return json.dumps(self.data)
 
-    def __getattr__(self, metaattr):
-        """Retrieve meta-metadata as per RFC15"""
-        raise NotImplementedError("Attempted to get "
-                                  "meta-metadata from %s" % self)
+    # def __getattr__(self, metaattr):
+    #     """Retrieve meta-metadata as per RFC15"""
+    #     raise NotImplementedError("Attempted to get "
+    #                               "meta-metadata from %s" % self)
 
 
 class History(Group):
@@ -526,6 +543,7 @@ _python_to_string = {
     int: 'int',
     float: 'float',
     str: 'string',
+    unicode: 'string',
     None: 'null',
     tuple: 'tuple',
     list: 'list',
@@ -534,7 +552,13 @@ _python_to_string = {
 
 
 def python_to_string(obj):
-    return _python_to_string.get(obj)
+    if obj == type(None):
+        obj = None
+
+    string = _python_to_string.get(obj)
+    if not string:
+        raise ValueError("Unrecognised Python datatype: %r" % obj)
+    return string
 
 
 def string_to_python(obj):

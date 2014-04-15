@@ -9,10 +9,7 @@ import openmetadata as om
 om.setup_log()
 
 # Starting-point
-path = os.path.expanduser(r'~\om_temp')
-
-if not os.path.exists(path):
-    os.mkdir(path)
+path = os.path.expanduser(r'~')
 
 location = om.Location(path)
 
@@ -34,6 +31,10 @@ odict = om.Group('mydict.dict', parent=olist)
 # ..with two keys
 key1 = om.Dataset('key1.string', data='value', parent=odict)
 
+# One of which, we neglect to specify a data-type.
+# The data-type will be determined via the Python data-type <str>
+key2 = om.Dataset('key2', data='value', parent=odict)
+
 # Finally, write it to disk.
 om.dump(location)
 
@@ -53,3 +54,6 @@ for item in om.read(path):
     print item
 # # --> c:\users\marcus\om2\.meta\mylist.list
 # --> c:\users\marcus\om2\.meta\simple_data.string
+
+
+# ----------- Remove

@@ -14,11 +14,7 @@ import os
 
 import openmetadata as om
 
-path = os.path.expanduser(r'~\om_temp')
-
-# Set-up
-if not os.path.exists(path):
-    os.mkdir(path)
+path = os.path.expanduser(r'~')
 
 """
 Q: Why store data in relation to content?

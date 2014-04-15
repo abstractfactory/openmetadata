@@ -114,6 +114,11 @@ def dump(path, data):
     return True
 
 
+def dump_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return True
+
 
 if __name__ == '__main__':
     pass

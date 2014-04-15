@@ -92,7 +92,7 @@ def _precheck(node):
             raise ValueError("%s was not valid" % node.path.as_str)
 
 
-def dump(node, nohistory=False, simulate=False):
+def dump(node, track_history=True, simulate=False):
     """
     Physically write to disk
 
@@ -102,35 +102,42 @@ def dump(node, nohistory=False, simulate=False):
 
     """
     _precheck(node)
-    _dump(node, nohistory, simulate)
+    return _dump(node, track_history, simulate)
 
 
-def _dump(node, nohistory=False, simulate=False):
-    if node.haschildren:
-        for child in node:
-            _dump(child)
-
-    else:
-        assert node.path.suffix, bug.suffix_not_resolved()
-
+def _dump(node, track_history=True, simulate=False):
+    if isblob(node):
         dataset = node
 
         path = dataset.path.as_str
 
+        # Get serialised data
         data = node.dump()
+
+        assert node.path.suffix, "%s=%s" % (node.path, node.data)
 
         if not simulate:
             if node.isdirty:
-                if not nohistory:
+                if track_history:
                     _make_history(node)
 
                 service.dump(path, data)
 
-                LOG.info("_dump(): Successfully dumped: %r" % path)
             else:
                 LOG.info("_dump(): Nothing dumped, data unchanged.")
         else:
             LOG.info("_dump(): Successfully simulated dump: %r" % path)
+
+    else:
+        path = node.path.as_str
+        service.dump_dir(path)
+
+        for child in node:
+            _dump(child, track_history, simulate)
+
+    LOG.info("_dump(): Successfully dumped: %r" % path)
+
+    return node
 
 
 def pull(node, lazy=False, depth=1, merge=False, _level=1):
@@ -138,11 +145,10 @@ def pull(node, lazy=False, depth=1, merge=False, _level=1):
     Main mechanism with which to read data from disk into memory.
 
     Parameters
-        depth   -- How many levels of a hierarchy to pull
-                   Example
-                        parent           <-- level 0
-                        |-- child        <-- level 1
-                            |-- dataset  <-- level 2
+        depth   -- Levels of a hierarchy to pull
+                    parent           <-- level 0
+                    |-- child        <-- level 1
+                        |-- dataset  <-- level 2
         lazy    -- Only pull when no data is present
         merge   -- Preserve existing data
 
@@ -275,18 +281,22 @@ def remove(node, permanent=False):
     if permanent:
         service.remove(node.path.as_str)
         LOG.info("remote(): Permanently removed %r" % node.path.as_str)
-        return
+    else:
+        trash(node)
 
-    trash_path = node.path + lib.TRASH
+    return True
+
+
+def trash(node):
+    trash_path = node.path.parent + lib.TRASH
 
     # Ensure node.path.name is unique in trash_path, as per RFC14
     if service.exists(trash_path.as_str):
-        dirs, files = service.ls(trash_path)
+        dirs, files = service.ls(trash_path.as_str)
+
         for trashed in dirs + files:
-            trash_name = trashed.split(node.EXT, 1)[0]
+            trash_name = trashed.split(node.path.EXT, 1)[0]
             if node.path.name == trash_name:
-                # An existing copy of this node is
-                # already in the trash_path. Permanently remove it.
                 LOG.info("remove(): Removing exisisting "
                          "%r from trash" % node.path.name)
                 existing_trashed_path = trash_path + trashed
@@ -301,16 +311,17 @@ def remove(node, permanent=False):
     service.move(node.path.as_str, deleted_path.as_str)
     LOG.info("remove(): Successfully removed %r" % node.path.as_str)
 
-    return True
+
+def emptybin(node):
+    """Permanently remove nodes in trash or `node`"""
+    # trash_path = node.path.parent + lib.TRASH
+    pass
 
 
 def hasdata(path, metapath):
     """Convenience-method for querying the existance metadata"""
-    try:
-        read(path, metapath, native=False)
-    except error.Exists:
-        return False
-    return True
+    data = read(path, metapath, native=False)
+    return True if data is not None else False
 
 
 def exists(node):
@@ -419,7 +430,7 @@ def history(node):
     return generator(imprints)
 
 
-def restore(imprint, keephistory=False):
+def restore(imprint, removehistory=True):
     """Restore `imprint` to target from history"""
     assert isinstance(imprint, lib.Imprint)
     LOG.info("restore(): Restoring %r" % imprint.path)
@@ -442,10 +453,10 @@ def restore(imprint, keephistory=False):
     current_value = target.data
     target.data = pull(previous_value).data
 
-    dump(target, nohistory=True)
+    dump(target, track_history=False)
 
     # Remove history
-    if not keephistory:
+    if removehistory:
         for old_imprint in history(target):
             if old_imprint.time >= imprint.time:
                 LOG.info("restore(): Removing old history: %r"
@@ -453,7 +464,7 @@ def restore(imprint, keephistory=False):
                 remove(old_imprint, permanent=True)
 
     LOG.info("restore(): Restoring %r(%r) to %r(%r)" %
-             (imprint.path, current_value, target.path, target.data))
+             (imprint.path, previous_value, target.path, current_value))
 
 
 def _make_history(node):
@@ -478,19 +489,23 @@ def _make_history(node):
     previous_value = pull(node).data
     node.data = current_value
 
+    LOG.info("_make_history(): Storing %r=%r" % (imprint_name, previous_value))
+
     # Construct history group
     history = History(lib.HISTORY, parent=parent)
     imprint = Imprint(imprint_name, parent=history)
-    Dataset('user', data='marcus', parent=imprint)
-    Dataset('value', data=previous_value, parent=imprint)
 
-    assert not service.exists(imprint.path.as_str), \
-        "%s already exists" % imprint.path
+    # Store current user
+    Dataset('user.string', data='marcus', parent=imprint)
 
-    dump(history)
+    # Store previous value
+    name = 'value.' + lib.python_to_string(type(previous_value))
+    Dataset(name, data=previous_value, parent=imprint)
+
+    dump(history, track_history=False)
 
     LOG.info("_make_history(): Successfully made history for %s (value=%s)"
-             % (node.path.as_str, node.data))
+             % (node, node.data))
 
 
 def _make_version(node, padding=3):
@@ -524,7 +539,7 @@ def _make_version(node, padding=3):
     dump(versions)
 
     LOG.info("_make_history(): Successfully made a version of %s"
-             % node.path.as_str)
+             % node)
 
 
 # ---------------------------------------------------------------------
@@ -577,7 +592,10 @@ def read(path, metapath=None, native=True):
     parts = metapath.split(lib.Path.METASEP)
 
     while parts:
-        pull(root)
+        try:
+            pull(root)
+        except error.Exists:
+            return None
 
         current = parts.pop(0)
         while current == '':
@@ -596,9 +614,12 @@ def read(path, metapath=None, native=True):
                     raise KeyError
 
         except KeyError:
-            raise error.Exists("%s does not exist" % name)
+            return None
 
-    pull(root)
+    try:
+        pull(root)
+    except error.Exists:
+        return None
 
     if root.haschildren:
         if native:
@@ -640,6 +661,9 @@ def write(path, metapath, data=None):
     else:
         typ = type(data)
     item_type = lib.python_to_om(typ)
+
+    if not '.' in dataset:
+        dataset += '.null'
 
     dataset = item_type(dataset, data=data, parent=root)
     dump(dataset)
