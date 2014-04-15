@@ -1,9 +1,7 @@
-Open Metadata
-=============
+<!-- ![](https://dl.dropbox.com/s/f756p54ermi9wto/openmetadata_black_small_rgb_aw1.png) -->
+![](https://dl.dropbox.com/s/frgz506hx49i9rt/openmetadata_black_med_rgb_aw1.png)
 
-![](https://dl.dropbox.com/s/av2x8gel580ow48/om2_hierarchy.png)
-
-With Open Metadata, you can associate metadata with a location; such as a path on a file-system.
+With Open Metadata, you can associate metadata with folders on your file-system.
 
 ```python
 # Simplest use-case
@@ -13,7 +11,7 @@ With Open Metadata, you can associate metadata with a location; such as a path o
 Creator of Open Metadata
 ```
 
-Head over to the /samples directory for more examples.
+Head over to [/samples](https://github.com/abstractfactory/openmetadata/tree/master/samples) for more examples.
 
 Open Metadata is there for you when:
 
@@ -63,14 +61,16 @@ Open Metadata is GPLv3 licensed software built upon the following open-source sp
 * [Cross-referencing Metadata](http://rfc.abstractfactory.io/spec/17)
 * [Open Metadata Types](http://rfc.abstractfactory.io/spec/18)
 * [Storage Agnostic Metadata](http://rfc.abstractfactory.io/spec/19)
-* [Mirrored Metadata](http://rfc.abstractfactory.io/spec/20)
+* [Metadata Referencing](http://rfc.abstractfactory.io/spec/20)
 * [Garbage Metadata](http://rfc.abstractfactory.io/spec/20)
 
-# Why Open Metadata and not Technology X?
+# FAQ
+
+> Why Open Metadata and not Technology X?
 
 Many alternatives were, and continue to be evaluated. Head over to [RFC24](http://rfc.abstractfactory.io/spec/24/) for an overview.
 
-# What is programmable content?
+> What is programmable content?
 
 In a data-oriented architecture, data controls the flow of information, not your software. Your software is designed to take instructions from data external to itself as a way to de-couple programmers from implementers.
 
