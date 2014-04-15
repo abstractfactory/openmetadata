@@ -1,7 +1,7 @@
 <!-- ![](https://dl.dropbox.com/s/f756p54ermi9wto/openmetadata_black_small_rgb_aw1.png) -->
 ![](https://dl.dropbox.com/s/frgz506hx49i9rt/openmetadata_black_med_rgb_aw1.png)
 
-With Open Metadata, you can associate metadata with folders on your file-system.
+Associate metadata with folders on your file-system.
 
 ```python
 # Simplest use-case
@@ -11,17 +11,17 @@ With Open Metadata, you can associate metadata with folders on your file-system.
 Creator of Open Metadata
 ```
 
-Head over to [/samples](https://github.com/abstractfactory/openmetadata/tree/master/samples) for more examples.
-
-Open Metadata is there for you when:
-
-* Change is common
-* Space is cheap
-* Control outweighs performance
+For more, head over to [/samples](https://github.com/abstractfactory/openmetadata/tree/master/samples)
 
 # Features
 
-Open Metadata is in early development (current version `0.3`) but below is what it can do for you today.
+There for you when..
+
+* ..change is common
+* ..space is cheap
+* ..control outweighs performance
+
+> Open Metadata is in early development (current version `0.3`) but below is what it can do for you today.
 
 #### Non-destructive
 
@@ -29,11 +29,11 @@ Every change you make is maintained in history; facilitating persistent undo/red
 
 #### Full disclosure
 
-You may at any point in time browse to data at any hierarchical level using your native file-browser; read data, write, modify, delete or debug malicious data with tools you know.
+You may at any point in time browse to data at any hierarchical level using your native file-browser; read, write, modify, delete or debug malicious data with tools you know.
 
 #### Partial I/O
 
-Quickly read and write within large sets of data without reading everything into memory nor affecting existing data; facilitating distributed collaborative editing.
+Quickly read and write within large sets of data without reading everything into memory nor affecting existing data; facilitating distributed collaborative editing. See [RFC13][] for more information.
 
 #### No limits on size nor complexity
 
@@ -77,3 +77,5 @@ In a data-oriented architecture, data controls the flow of information, not your
 This way, implementers can design their software by means of placing content, in a hierarchy for instance, that governs what actions the software may take in which order.
 
 Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an stateful, intelligent unit capable of making desicions; this is what I call programmable content.
+
+[RFC13]: http://rfc.abstractfactory.io/spec/13
