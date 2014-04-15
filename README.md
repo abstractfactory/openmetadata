@@ -50,7 +50,7 @@ There are no mysteries about the inner-workings of the data that you write; you 
 
 # Specifications
 
-Open Metadata is GPLv3 licensed software built upon the following open-source specifications:
+Open Metadata is LGPLv3 licensed software built upon the following open-source specifications:
 
 * [General Introduction](http://rfc.abstractfactory.io/spec/10)
 * [Object-Oriented Metadata](http://rfc.abstractfactory.io/spec/12)
