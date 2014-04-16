@@ -47,22 +47,35 @@ New datasets take up *zero* space; meaning you can setup arbitrarily sized array
 
 There are no mysteries about the inner-workings of the data that you write; you may write personal tools for debugging, graphical interfaces or extensions to the standard. The specifications are all laid out below and collaboration is welcome. (Want Open Metadata in Lua, Java, PHP or C++?)
 
+# Installation
+
+Download a [release][], unpack into site-packages.
+
+```python
+# Example
+>>> site_packages = r'c:\python27\lib\site-packages'
+
+# To test, run
+>>> import openmetadata-0.4 as om
+>>> print om.version
+'0.4.0'
+```
 
 # Specifications
 
 Open Metadata is LGPLv3 licensed software built upon the following open-source specifications:
 
 * [General Introduction](http://rfc.abstractfactory.io/spec/10)
+* [Temporal Open Metadata](http://rfc.abstractfactory.io/spec/14)
 * [Object-Oriented Metadata](http://rfc.abstractfactory.io/spec/12)
 * [Zero Open Metadata](http://rfc.abstractfactory.io/spec/13)
-* [Temporal Open Metadata](http://rfc.abstractfactory.io/spec/14)
-* [Meta Open Metadata](http://rfc.abstractfactory.io/spec/15)
-* [Open Metadata Blob](http://rfc.abstractfactory.io/spec/16)
-* [Cross-referencing Metadata](http://rfc.abstractfactory.io/spec/17)
-* [Open Metadata Types](http://rfc.abstractfactory.io/spec/18)
-* [Storage Agnostic Metadata](http://rfc.abstractfactory.io/spec/19)
+* [Meta Metadata](http://rfc.abstractfactory.io/spec/15)
+* [Metadata Types](http://rfc.abstractfactory.io/spec/18)
+* [Metadata Blob](http://rfc.abstractfactory.io/spec/16)
 * [Metadata Referencing](http://rfc.abstractfactory.io/spec/20)
 * [Garbage Metadata](http://rfc.abstractfactory.io/spec/20)
+* [Cross-referencing Metadata](http://rfc.abstractfactory.io/spec/17)
+* [Storage Agnostic Metadata](http://rfc.abstractfactory.io/spec/19)
 
 # FAQ
 
@@ -79,3 +92,4 @@ This way, implementers can design their software by means of placing content, in
 Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an stateful, intelligent unit capable of making desicions; this is what I call programmable content.
 
 [RFC13]: http://rfc.abstractfactory.io/spec/13
+[release]: https://github.com/abstractfactory/openmetadata/releases

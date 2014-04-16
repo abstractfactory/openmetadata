@@ -27,7 +27,7 @@ assert om.read(path, 'girlfriend') == 'Sandra Bullock'
 # To get the history, we must first get an
 # instance of the Dataset 'girlfriend'
 dataset = om.read(path, 'girlfriend', native=False)
-imprint = om.history(dataset).next()
-om.restore(imprint, keephistory=True)
+imprint = next(om.history(dataset))
+om.restore(imprint, removehistory=False)
 
 assert om.read(path, 'girlfriend') == 'Lucy Lui'

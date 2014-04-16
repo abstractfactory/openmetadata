@@ -390,7 +390,8 @@ class Dataset(Blob):
         try:
             self.data = json.loads(data)
         except ValueError:
-            raise error.Serialisation("%s contains invalid data" % self.path)
+            LOG.warning("%s contains invalid data" % self.path)
+            self.data = data
 
     def dump(self):
         """Serialise contents of `self`"""
@@ -487,19 +488,19 @@ class Null(Dataset):
 
 
 class Enum(Group):
-    pass
+    default_value = []
 
 
 class Tuple(Group):
-    pass
+    default_value = ()
 
 
 class List(Group):
-    pass
+    default_value = []
 
 
 class Dict(Group):
-    pass
+    default_value = {}
 
 
 _python_to_om = {
