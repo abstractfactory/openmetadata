@@ -33,15 +33,11 @@ You may at any point in time browse to data at any hierarchical level using your
 
 #### Partial I/O
 
-Quickly read and write within large sets of data without reading everything into memory nor affecting existing data; facilitating distributed collaborative editing. See [RFC13][] for more information.
+As a side-effect to its inherently simplistic design, reading and writing within large sets of data doesn't require reading everything into memory nor does it affect surrounding data; facilitating distributed collaborative editing. See [RFC13][] for more information.
 
 #### No limits on size nor complexity
 
 Store millions of strings, booleans, matrices.. groups of matrices.. matrices of groups, strings, booleans and vectors. On consumer hardware, in a matter of megabytes, without compression. Then go ahead and store billions.
-
-#### Storage allocation control
-
-New datasets take up *zero* space; meaning you can setup arbitrarily sized arrays of data and only read and write to parts of it you require at any point in time; Open Metadata will only occupy the space you actually use.
 
 #### Open specification, open source
 

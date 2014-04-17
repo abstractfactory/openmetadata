@@ -5,7 +5,7 @@ import logging
 from openmetadata import service
 from openmetadata import error
 from openmetadata import path
-from openmetadata import bug
+# from openmetadata import bug
 
 HISTORY = '.history'
 VERSIONS = '.versions'
@@ -92,18 +92,6 @@ class Node(object):
 
     @property
     def relativepath(self):
-        # Resolve suffix
-        # if not self._path.suffix:
-        #     data = self._data
-
-        #     if self._data is None:
-        #         dt = None
-        #     else:
-        #         dt = type(data)
-
-        #     suffix = python_to_string(dt)
-        #     self._path = self._path.copy(suffix=suffix)
-
         return self._path
 
     @property
@@ -179,8 +167,9 @@ class Node(object):
 
     @property
     def children(self):
-        for child in self._children.values():
-            yield child
+        for name, path in self._children.iteritems():
+            if not name.startswith('.'):
+                yield path
 
     @property
     def parent(self):
