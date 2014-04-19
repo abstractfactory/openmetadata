@@ -51,14 +51,15 @@ from openmetadata import lib
 from openmetadata import error
 from openmetadata import service
 
-LOG = logging.getLogger('openmetadata.api')
+log = logging.getLogger('openmetadata.api')
 
 
 # Objects
 
 """
 
-
+Location    -- Path to which metadata is associated
+Variable    -- Dynamically typed metadata variable
 
 """
 
@@ -78,6 +79,8 @@ def push():
 
 
 def dump(node, track_history=True, simulate=False):
+    assert isinstance(node, lib.Node)
+
     if node.haschildren:
         path = node.path.as_str
 
@@ -97,7 +100,7 @@ def dump(node, track_history=True, simulate=False):
 
         service.dump(path, value)
 
-        LOG.info("_dump(): Successfully dumped: %r" % path)
+        log.info("_dump(): Successfully dumped: %r" % path)
 
     return node
 
@@ -205,12 +208,12 @@ def remove(node, permanent=False):
     """Remove `node` from database, either to trash or permanently"""
 
     if not service.exists(node.path.as_str):
-        LOG.warning("remove(): %s did not exist" % node.path.as_str)
+        log.warning("remove(): %s did not exist" % node.path.as_str)
         return False
 
     if permanent:
         service.remove(node.path.as_str)
-        LOG.info("remote(): Permanently removed %r" % node.path.as_str)
+        log.info("remote(): Permanently removed %r" % node.path.as_str)
     else:
         trash(node)
 
@@ -224,10 +227,10 @@ def trash(node):
     if service.exists(trash_path.as_str):
         for match in find(trash_path.as_str, node.path.name):
             match_path = trash_path + match
-            service.remove(match_path)
+            service.remove(match_path.as_str)
 
-            LOG.info("remove(): Removing exisisting "
-                     "%r from trash" % match_path)
+            log.info("remove(): Removing exisisting "
+                     "%r from trash" % match_path.name)
 
     basename = node.path.basename
     deleted_path = trash_path + basename
@@ -235,7 +238,7 @@ def trash(node):
     assert not service.exists(deleted_path.as_str)
 
     service.move(node.path.as_str, deleted_path.as_str)
-    LOG.info("remove(): Successfully removed %r" % node.path.as_str)
+    log.info("remove(): Successfully removed %r" % node.path.as_str)
 
 
 # def exists(node):
@@ -257,10 +260,15 @@ def restore(node):
 
 def _make_history(node):
     assert service.isfile(node.path.as_str), node.path
-    copy = node.copy(deep=True)
+    copy = node.copy()
 
     try:
         parent = next(node.parent)
+
+        # Avoid our `copy` adding itself as a child
+        # to `parent`; this would cause the dictionary
+        # containing the parents children to change.
+        parent = parent.copy()
     except StopIteration:
         return
 
@@ -286,7 +294,7 @@ def _make_history(node):
 
     dump(history, track_history=False)
 
-    LOG.info("_make_history(): Successfully made history for %s (value=%s)"
+    log.info("_make_history(): Successfully made history for %s (value=%s)"
              % (node, node.value))
 
 
@@ -311,7 +319,7 @@ def _make_history(node):
 #         root = parent
 
 #         try:
-#             group = read(root.as_str, metapath, lazy=lazy, native=False)
+#             group = read(root.as_str, metapath, lazy=lazy, convert=False)
 
 #             if group:
 #                 print "Found %s" % group
@@ -355,7 +363,7 @@ def _make_history(node):
 #     metapath = node.path.meta
 
 #     while parent:
-#         value = read(parent.as_str, metapath, lazy=lazy, native=True)
+#         value = read(parent.as_str, metapath, lazy=lazy, convert=True)
 
 #         if value and not isgroup(value):
 #             break
@@ -380,7 +388,7 @@ def _parse_metapath(metapath):
     return parts
 
 
-def read(path, metapath=None, native=True, lazy=False):
+def read(path, metapath=None, convert=True, lazy=False):
     location = Location(path)
 
     root = location
@@ -420,8 +428,8 @@ def read(path, metapath=None, native=True, lazy=False):
     except error.Exists:
         return None
 
-    if native:
-        # Return native Python value-types.
+    if convert:
+        # Convert values to native Python objects.
         #
         # This is a list of string for collections,
         # representing the keys of e.g. a folder, and
@@ -448,42 +456,26 @@ def write(path, metapath, value=None):
 
     parts = _parse_metapath(metapath)
 
-    # Strip away leaf, and lay
-    # grounds for its preceeding hierarchy
-    leaf_name = parts.pop()
-
     root = location
-    collections = parts
-    for col_name in collections:
+    variables = parts
+    for variable_name in variables:
         # As each predecessor is manually specified, there is
         # a chance that a collection of existing/different
         # suffix already exists. If so, use that.
         try:
-            found = find(root.path.as_str, col_name)
-            col_name = next(found)
+            found = find(root.path.as_str, variable_name)
+            variable_name = next(found)
         except StopIteration:
             pass
 
-        col = Variable(col_name, parent=root)
-        root = col
+        variable = Variable(variable_name, parent=root)
+        root = variable
 
-    leaf = Variable(leaf_name, value=value, parent=root)
+    root.value = value
 
-    assert leaf.path.suffix
+    assert root.path.suffix
 
-    # Ensure no duplicates exists
-    print "Looking for %s in %s" % (leaf_name, root.path)
-    for found in find(root.path.as_str, leaf_name):
-        print "Removing duplicate %s" % found
-
-    # for node in existing(leaf):
-    #     print "Checking %s" % node.path
-    #     if node.type == leaf.type:
-    #         continue
-    #     raise error.Exists("%s already exists" % leaf.path)
-
-    # dump(leaf)
-
+    dump(root)
 
 
 __all__ = [
