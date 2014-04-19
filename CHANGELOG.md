@@ -1,3 +1,7 @@
+# 0.5
+
+Unification of Group and Dataset
+
 # 0.4
 
 Mainly a maintenance release, but does contain backwards-incompatible changes; marked [INCOMPATIBLE] below.

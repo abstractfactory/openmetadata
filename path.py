@@ -1,4 +1,5 @@
 import re
+import logging
 
 
 class Path(object):
@@ -37,6 +38,8 @@ class Path(object):
         /root/child&options_here
 
     """
+
+    log = logging.getLogger('openmetadata.path.Path')
 
     EXT = '.'
     PARENT_DIR = '..'
@@ -99,7 +102,7 @@ class Path(object):
         self.__as_raw = None
         self.__as_str = None
 
-    def copy(self, path=None, suffix=None):
+    def copy(self, path=None, basename=None, suffix=None):
         """
         Example
             >>> path = Path('/home/marcus/file.exe')
@@ -116,9 +119,26 @@ class Path(object):
             >>> path.copy(suffix='exe')
             Path('/home/no/suffix.exe')
 
+            >>> path = Path('/home/marcus')
+            >>> path.copy(basename='lucas')
+            Path('/home/lucas')
+
+            >>> path = Path('/')
+            >>> path.copy(basename='lucas')
+            Path('')
+
         """
 
         path = path or self._path
+
+        if basename:
+            try:
+                path, _ = path.rsplit(self.PROCSEP, 1)
+                path = self.PROCSEP.join([path, basename])
+            except ValueError:
+                self.log.warning("Skipping: Could not replace "
+                                 "basename of: %r" % path)
+                pass
 
         if suffix:
             # Add or replace suffix
@@ -544,6 +564,9 @@ class MetaPath(DirPath):
 
 
 if __name__ == '__main__':
+    import openmetadata as om
+    om.setup_log()
+
     import os
     import doctest
     doctest.testmod()

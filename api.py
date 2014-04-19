@@ -74,8 +74,8 @@ Dataset     -- Main vessel of data
 
 Node = lib.Node
 Location = lib.Location
-Group = lib.Group
-Dataset = lib.Dataset
+Group = lib.GroupFactory
+Dataset = lib.DatasetFactory
 Imprint = lib.Imprint
 History = lib.History
 
@@ -239,7 +239,7 @@ def pull(node, lazy=False, depth=1, merge=False, _level=1):
             if dir_.startswith("."):
                 continue
 
-            Group(dir_, parent=node)
+            lib.GroupFactory(dir_, parent=node)
 
         for file_ in files:
             if file_.startswith("."):
@@ -357,10 +357,7 @@ def existing(node):
                 name = basename
 
             if node.path.name == name:
-                print "Making %s of %s" % (typ, basename)
                 node_ = typ(basename)
-                print "Which became: %r" % node_
-                print "With suffix: %s" % node_.type
                 node_._parent = node._parent
                 existing.append(node_)
 
@@ -762,7 +759,7 @@ def write(path, metapath, data=None):
     groups = parts
     root = location
     for group in groups:
-        group = Group(group, parent=root)
+        group = lib.GroupFactory(group, parent=root)
         root = group
 
     # Is it a group or a dataset?
