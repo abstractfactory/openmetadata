@@ -70,6 +70,9 @@ class Node(object):
     def __hash__(self):
         return hash(str(self))
 
+    def __children__(self):
+        return self._children
+
     @abc.abstractmethod  # Prevent direct instantiation
     def __init__(self, path, data=None, parent=None):
         if isinstance(path, basestring):
@@ -81,7 +84,7 @@ class Node(object):
         self._isvalid = None
 
         self._children = {}
-        self._data = None
+        self._data = data
         self._parent = parent
 
         if data is not None:
@@ -158,12 +161,27 @@ class Node(object):
 
         self._children[key] = child
 
+    def copy(self, path=None, data=None):
+        path = path or self.relativepath
+        data = data = self._data
+
+        copy = self.__class__(path, data)
+        copy._parent = self._parent
+
+        return copy
+
     def clear(self):
         """Remove existing data/children"""
         while self._children:
             self._children.popitem()
 
         self._data = None
+
+    def ls(self):
+        """List contained children"""
+        print self.path.name
+        for node in self:
+            print '\t' + node.path.name
 
     @property
     def children(self):
@@ -184,7 +202,7 @@ class Node(object):
     @data.setter
     def data(self, data):
         if not self.path.suffix:
-            self._resolve_suffix(data)
+            self._path = self._resolve_suffix(data)
 
         if data is None:
             self._data = data
@@ -220,7 +238,7 @@ class Node(object):
             dt = None
 
         suffix = python_to_string(dt)
-        self._path = self.relativepath.copy(suffix=suffix)
+        return self.relativepath.copy(suffix=suffix)
 
     @property
     def isvalid(self):
@@ -270,9 +288,9 @@ class Location(Node):
             raise error.Exists("The path to a Location object "
                                "must previously exist")
 
-    def copy(self, path=None):
-        node = self.__class__(path or self.path)
-        return node
+    # def copy(self, path=None):
+    #     node = self.__class__(path or self.path)
+    #     return node
 
     @property
     def data(self):
@@ -312,8 +330,9 @@ class Group(Node):
     def __init__(self, *args, **kwargs):
         super(Group, self).__init__(*args, **kwargs)
 
-        if self._path.isabsolute:
-            raise error.RelativePath('Path must be relative: %s' % path)
+        if self.relativepath.isabsolute:
+            raise error.RelativePath('Path must be relative: %r'
+                                     % self.relativepath.as_str)
 
     @property
     def data(self):
@@ -341,9 +360,9 @@ class Blob(Node):
     def __init__(self, *args, **kwargs):
         super(Blob, self).__init__(*args, **kwargs)
 
-        if self._path.isabsolute:
+        if self.relativepath.isabsolute:
             raise error.RelativePath('Path must be relative: %r'
-                                     % self.path.as_str)
+                                     % self.relativepath.as_str)
 
         # Nodes are dirty until they are pulled, and
         # made dirty again via setattr(self.data)
@@ -568,7 +587,10 @@ class _FactoryBase(object):
     default = None
 
     def __new__(cls, path, *args, **kwargs):
-        suffix = service.suffix(path)
+        if isinstance(path, Path):
+            suffix = path.suffix
+        else:
+            suffix = service.suffix(path)
         Datatype = cls.types.get(suffix) or cls.default
         return Datatype(path, *args, **kwargs)
 
@@ -632,8 +654,12 @@ if __name__ == '__main__':
     location = om.Location(r'C:\Users\marcus\om2')
 
     # # Add a regular string
-    ostring = om.Dataset('simple_data.string', data='whop', parent=location)
-    ostring = om.Dataset('test.bool', data=False, parent=location)
+    # ostring = om.Dataset('simple_data.string', data='whop', parent=location)
+    # ostring = om.Dataset('test', data=False, parent=location)
+    ostring = om.Dataset('test', data=None, parent=location)
+    print ostring.path
+    new_path = ostring.relativepath.copy(suffix='null')
+    # print ostring.copy(path=new_path).path
     # print ostring.data
     # ostring.data = 5
     # print ostring.data
@@ -642,16 +668,16 @@ if __name__ == '__main__':
     # print ostring.path
 
     # # Add text
-    text = om.Dataset('story.text', parent=location)
-    text.data = 'There once was a boy'
+    # text = om.Dataset('story.text', parent=location)
+    # text.data = 'There once was a boy'
 
     # # Add a list
-    olist = om.Group('mylist.list', parent=location)
+    # olist = om.Group('mylist.list', parent=location)
 
     # # Containing three datasets..
-    l1 = om.Dataset(path='item1', data='a string value', parent=olist)
-    l2 = om.Dataset(path='item2', data=True, parent=olist)
-    l3 = om.Dataset(path='item3', data=5, parent=olist)
+    # l1 = om.Dataset(path='item1', data='a string value', parent=olist)
+    # l2 = om.Dataset(path='item2', data=True, parent=olist)
+    # l3 = om.Dataset(path='item3', data=5, parent=olist)
 
     # om.ls(olist)
     # # ..and a dictionary..

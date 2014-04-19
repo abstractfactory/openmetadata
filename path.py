@@ -176,20 +176,16 @@ class Path(object):
             'options'
         """
 
+        parts = path.split(cls.PROCSEP)
+        basename = parts.pop()
+
         try:
-            head, basename = path.rsplit(cls.PROCSEP, 1)
-        except ValueError:
-            head, basename = '', path
+            basename, option = basename.split(cls.OPTIONDIV)
+        except:
+            option = None
 
-        option = None
-        if cls.OPTIONDIV in basename:
-            basename = basename
-            if cls.OPTIONDIV in basename:
-                basename, option = basename.split(cls.OPTIONDIV)
-
-        path = basename
-        if head:
-            path = cls.PROCSEP.join([head, basename])
+        parts.append(basename)
+        path = cls.PROCSEP.join(parts)
 
         return path, option
 
@@ -255,7 +251,10 @@ class Path(object):
 
         """
 
-        _, metapath_wsuffix = self._path.rsplit(self.CONTAINER, 1)
+        try:
+            _, metapath_wsuffix = self._path.rsplit(self.CONTAINER, 1)
+        except ValueError:
+            return None
 
         metapath = ''
         for part in metapath_wsuffix.split(self.PROCSEP):
@@ -281,15 +280,40 @@ class Path(object):
 
     @property
     def location(self):
-        return self.__class__(self._path.split(self.CONTAINER, 1)[0])
+        """
+        Example
+            >>> path = Path('/home/user/.meta/address/street')
+            >>> path.location
+            Path('/home/user')
+            >>> path = Path('/home/user/.meta')
+            >>> path.location
+            Path('/home/user')
+            >>> path = Path('/home/user')
+            >>> path.location
+            Path('/home/user')
+
+        """
+
+        path = self._path.split(self.CONTAINER, 1)[0]
+        return self.__class__(path)
 
     @property
     def parent(self):
-        """Return the pure parent of a path.
+        r"""Return the pure parent of a path.
 
         The pure parent is that which can be derived simply by
         parsing the string value of the path.
 
+        Example
+            >>> path = Path('/home/marcus')
+            >>> path.parent
+            Path('/home')
+            >>> path = WindowsPath(r'c:\users')
+            >>> path.parent
+            WindowsPath('c:\\')
+            >>> path.parent.parent
+            >>> path = Path('/')
+            >>> path.parent
         """
 
         path = self._path
@@ -393,7 +417,7 @@ class Path(object):
     def startswith(self, predicate):
         return self.as_str.startswith(predicate)
 
-    def endsswith(self, predicate):
+    def endswith(self, predicate):
         return self.as_str.endswith(predicate)
 
     @property
@@ -460,7 +484,7 @@ class WindowsPath(DirPath):
         drive as just another folder, the root being one level
         above the drive.
 
-        E.g.
+        Example
             c:\windows\system32 == \c\windows32\system32
 
     """
@@ -468,9 +492,6 @@ class WindowsPath(DirPath):
     SEPARATOR = '\\'
 
     DrivePattern = re.compile(r'^\w:')
-
-    def __init__(self, *args, **kwargs):
-        super(WindowsPath, self).__init__(*args, **kwargs)
 
     @classmethod
     def parse(cls, path):
@@ -506,7 +527,7 @@ class WindowsPath(DirPath):
     @property
     def drive(self):
         if self.root:
-            drive = self._path[1:2] + ":"
+            drive = self._path[1] + ":"
             return drive
         return None
 
@@ -523,12 +544,20 @@ class MetaPath(DirPath):
 
 
 if __name__ == '__main__':
+    import os
     import doctest
     doctest.testmod()
 
     # path = Path('/root/.meta/child.ext&opt')
-    path = Path('child.ext&opt')
-    print path.option
+    path = WindowsPath(r'c:\users')
+    # path = WindowsPath('/c')
+    # print path.as_raw
+    # print path._path
+    print os.path.join(path.parent.as_str, 'test')
+    # print path.parent.parent._path
+    # print path.parent.parent + 'local'
+    # print os.path.join(path.parent.parent.as_str, 'local')
+    # print path.parent.parent.parent
     # path = Path('/root/.meta/child')
     # print Path.OPTIONDIV
     # print '/test/some&folder'.rsplit(Path.OPTIONDIV)

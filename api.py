@@ -263,7 +263,6 @@ def pull(node, lazy=False, depth=1, merge=False, _level=1):
                 if isblob(child):
                     continue
 
-                print "Also pulling %r" % child.path
                 # print "Also pulling %r" % child
                 pull(child, lazy, depth, _level)
 
@@ -326,25 +325,43 @@ def hasdata(path, metapath):
 
 def exists(node):
     """Check if `node` exists under any suffix"""
-    if not node.hasparent:
-        return False
+    return node.path.name in existing(node)
 
-    if isinstance(node, lib.Imprint):
-        return service.exists(node.path.as_str)
+
+def existing(node):
+    """Return existing nodes with names identical to `node`"""
+    # if not node.hasparent:
+    #     return []
+
+    # if isinstance(node, lib.Imprint):
+    #     return service.exists(node.path.as_str)
 
     existing = []
-    path = node.path.parent.as_str
+    parent_path = node.path.parent.as_str
 
-    if not service.exists(path):
-        return False
+    if not service.exists(parent_path):
+        return []
 
-    dirs_, files_ = service.ls(path)
+    dirs_, files_ = service.ls(parent_path)
 
-    for entry in dirs_ + files_:
-        existing.append(entry.split(lib.Path.EXT)[0])
+    mapping = {Group: dirs_,
+               Dataset: files_}
 
-    # name = node.path.name
-    return node.path.name in existing
+    for typ, col in mapping.iteritems():
+        for entry in col:
+            basename = service.basename(entry)
+
+            try:
+                name, _ = basename.split(lib.Path.EXT)
+            except ValueError:
+                name = basename
+
+            if node.path.name == name:
+                node_ = typ(basename)
+                node_._parent = node._parent
+                existing.append(node_)
+
+    return existing
 
 
 # ---------------------------------------------------------------------
@@ -355,8 +372,97 @@ def exists(node):
 # ---------------------------------------------------------------------
 
 
-def inherit(node):
-    raise NotImplementedError
+def inherit(node, lazy=False, offset=None):
+    if isgroup(node) or islocation(node):
+        return _inherit_container(node, lazy, offset)
+    if isblob(node):
+        return _inherit_blob(node, lazy)
+    raise TypeError("Cannot inherit type %s" %
+                    node.__class__.__name__)
+
+
+def _inherit_container(node, lazy=False, offset=None):
+    """
+    TODO: As a workaround for non-cascading locations, we'll
+    throw in an `offset` parameter. With this, you can cascade
+    metadata in inner folders of a location.
+
+    Example
+        >> path = '/home/marcus/project/shot/appdata'
+        >> _inherit_container(node, offset='appdata/myapp.app')
+
+    Parameters
+        offset  --  Look under location of `node`, plus specified offset.
+
+    """
+
+    assert isgroup(node) or islocation(node)
+
+    # Find closest parent with metadata
+    # location = node.location
+    parent = node.location.path
+    metapath = node.path.meta
+
+    tree = []
+    while parent:
+        root = parent
+
+        if offset:
+            root += offset
+
+        try:
+            group = read(root.as_str, metapath, lazy=lazy, native=False)
+
+            if group:
+                print "Found %s" % group
+                tree.append(group)
+
+        except error.Exists:
+            pass
+
+        parent = parent.parent
+
+    # Children overwrites parents
+    tree.reverse()
+
+    # print [t.path for t in tree]
+
+    children = {}
+    for element in tree:
+        # print "Merging %s" % element._children
+        for key, value in element.__children__().iteritems():
+            # print "\t " + key
+            if key in children:
+                """
+                TODO: Perform merge here
+                At the moment, they replace each other.
+
+                """
+
+            children[key] = value
+
+    node._children = children
+
+    return node
+
+
+def _inherit_blob(node, lazy=False):
+    assert isblob(node)
+
+    # Find closest parent with metadata
+    # location = node.location
+    parent = node.location.path
+    metapath = node.path.meta
+
+    while parent:
+        data = read(parent.as_str, metapath, lazy=lazy, native=True)
+
+        if data and not isgroup(data):
+            break
+
+        parent = parent.parent
+
+    node.data = data
 
 
 # ---------------------------------------------------------------------
@@ -572,8 +678,8 @@ def dumps(node):
     return root
 
 
-def read(path, metapath=None, native=True):
-    """Retrieve Python objects via `path` and `metapath`
+def read(path, metapath=None, native=True, lazy=False):
+    """Read Location, Group or Dataset via string values
 
     Parameters
         path        -- Absolute path to associated directory
@@ -584,16 +690,17 @@ def read(path, metapath=None, native=True):
     """
 
     location = lib.Location(path)
-    if metapath is None:
-        return location
 
     root = location
 
-    parts = metapath.split(lib.Path.METASEP)
+    if metapath:
+        parts = metapath.split(lib.Path.METASEP)
+    else:
+        parts = []
 
     while parts:
         try:
-            pull(root)
+            pull(root, lazy=lazy)
         except error.Exists:
             return None
 
@@ -617,7 +724,7 @@ def read(path, metapath=None, native=True):
             return None
 
     try:
-        pull(root)
+        pull(root, lazy=lazy)
     except error.Exists:
         return None
 
@@ -628,7 +735,7 @@ def read(path, metapath=None, native=True):
                 children.append(child.path.name)
             return children
         else:
-            return root.children
+            return root
 
     if native:
         return root.data
@@ -662,10 +769,20 @@ def write(path, metapath, data=None):
         typ = type(data)
     item_type = lib.python_to_om(typ)
 
-    if not '.' in dataset:
-        dataset += '.null'
-
     dataset = item_type(dataset, data=data, parent=root)
+
+    # Resolve missing suffix
+    if not dataset.path.suffix:
+        dataset._path = dataset._resolve_suffix(data)
+
+    assert dataset.path.suffix
+
+    # Ensure no duplicates exists
+    for node in existing(dataset):
+        if node.path.suffix == dataset.path.suffix:
+            continue
+        raise error.Exists("%s already exists" % dataset.path)
+
     dump(dataset)
 
 
@@ -745,8 +862,10 @@ __all__ = [
     'read',
     'write',
     'pull',
+    'inherit',
     'ls',
     'exists',
+    'existing',
     'restore',
     'remove',
     'history',

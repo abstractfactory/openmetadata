@@ -21,6 +21,10 @@ def suffix(path):
     return os.path.splitext(path)[1][1:]
 
 
+def basename(path):
+    return os.path.basename(path)
+
+
 def exists(path):
     return os.path.exists(path)
 
