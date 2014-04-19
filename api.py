@@ -118,8 +118,8 @@ def _dump(node, track_history=True, simulate=False):
 
         if not simulate:
             if node.isdirty:
-                if track_history:
-                    _make_history(node)
+                # if track_history:
+                #     _make_history(node)
 
                 service.dump(path, data)
 
