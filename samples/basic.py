@@ -41,8 +41,7 @@ om.dump(location)
 # ----------- Read it back in
 
 
-print om.read(path)
-# --> [List('mylist.list'), String('simple_data.string')]
+assert om.read(path) == ['mylist', 'simple_data']
 
 print om.read(path, 'mylist')
 # --> [Bool('item2.bool'), Int('item3.int'), ...]

@@ -87,11 +87,12 @@ class Node(object):
         self._data = data
         self._parent = parent
 
-        if data is not None:
-            self.data = data
-
         if parent:
+            if isinstance(parent, Blob):
+                raise TypeError("Parent must be a Group")
             parent.add(self)
+
+        # print self.path
 
     @property
     def relativepath(self):
@@ -196,56 +197,22 @@ class Node(object):
     @property
     def data(self):
         if self._data is None:
-            return self.default_value
+            return defaults.get(self.type)
         return self._data
 
     @data.setter
     def data(self, data):
-        if not self.path.suffix:
-            self._path = self._resolve_suffix(data)
-
-        if data is None:
-            self._data = data
-            return
-
-        # If data remains unchanged, don't
-        # bother altering the `isdirty` bool.
-        if data == self._data:
-            return
-
-        if not self.type:
-            self._type = data.__class__
-
-        try:
-            data = self.type(data)
-
-        except TypeError:
-            raise TypeError("Item has no type")
-
-        except ValueError:
-            raise ValueError('%r: %r, expected %r'
-                             % (data,
-                                data.__class__.__name__,
-                                self.type.__name__))
-
         self._data = data
         self.isdirty = True
 
     def _resolve_suffix(self, data=None):
-        dt = type(data)
-
         if data is None:
             dt = None
+        else:
+            dt = type(data)
 
-        suffix = python_to_string(dt)
-        return self.relativepath.copy(suffix=suffix)
-
-    @property
-    def isvalid(self):
-        if self._isvalid is None:
-            # Refresh path to ensure it is valid
-            getattr(self, 'path')
-        return self._isvalid
+        typ = python_to_string(dt)
+        return self.relativepath.copy(suffix=typ)
 
     @property
     def hasdata(self):
@@ -287,10 +254,6 @@ class Location(Node):
         if not service.exists(self.path.as_str):
             raise error.Exists("The path to a Location object "
                                "must previously exist")
-
-    # def copy(self, path=None):
-    #     node = self.__class__(path or self.path)
-    #     return node
 
     @property
     def data(self):
@@ -379,6 +342,11 @@ class Blob(Node):
     def haschildren(self):
         return False
 
+    # def __getattr__(self, metaattr):
+    #     """Retrieve meta-metadata as per RFC15"""
+    #     raise NotImplementedError("Attempted to get "
+    #                               "meta-metadata from %s" % self)
+
 
 class Dataset(Blob):
     """
@@ -393,6 +361,24 @@ class Dataset(Blob):
 
     """
 
+    def __init__(self, *args, **kwargs):
+        super(Dataset, self).__init__(*args, **kwargs)
+
+        # Based on the data given, determine an initial suffix
+        self._path = self._resolve_suffix(kwargs.get('data'))
+
+    @property
+    def data(self):
+        return super(Dataset, self).data
+
+    @data.setter
+    def data(self, data):
+        self._path = self._resolve_suffix(data)
+        assert self.path.suffix
+
+        self._data = data
+        self.isdirty = True
+
     def load(self, data):
         """De-serialise `data` into `self`"""
         try:
@@ -404,11 +390,6 @@ class Dataset(Blob):
     def dump(self):
         """Serialise contents of `self`"""
         return json.dumps(self.data)
-
-    # def __getattr__(self, metaattr):
-    #     """Retrieve meta-metadata as per RFC15"""
-    #     raise NotImplementedError("Attempted to get "
-    #                               "meta-metadata from %s" % self)
 
 
 class History(Group):
@@ -458,105 +439,16 @@ class Imprint(Group):
         return self._time
 
 
-"""
-
-Open Metadata data-types
-
-"""
-
-
-class Bool(Dataset):
-    default_value = False
-
-
-class Int(Dataset):
-    default_value = 0
-
-
-class Float(Dataset):
-    default_value = 0.0
-
-
-class String(Dataset):
-    default_value = ''
-
-
-class Text(Dataset):
-    default_value = ''
-
-
-class Date(Dataset):
-    @property
-    def default_value(self):
-        return service.currenttime()
-
-
-class Null(Dataset):
-    default_value = None
-
-
-class Enum(Group):
-    default_value = []
-
-
-class Tuple(Group):
-    default_value = ()
-
-
-class List(Group):
-    default_value = []
-
-
-class Dict(Group):
-    default_value = {}
-
-
-_python_to_om = {
-    bool: Bool,
-    int: Int,
-    float: Float,
-    str: String,
-    None: Null,
-    tuple: Tuple,
-    list: List,
-    dict: Dict
-}
-
-
-def python_to_om(obj):
-    return _python_to_om.get(obj)
-
-
-_string_to_om = {
-    'bool': Bool,
-    'int': Int,
-    'float': Float,
-    'string': String,
-    'null': Null,
-    'tuple': Tuple,
-    'list': List,
-    'dict': Dict
-}
-
-
-def om_to_string(obj):
-    return obj.__name__.lower()
-
-
-def string_to_om(obj):
-    return _string_to_om.get(obj)
-
-
 _python_to_string = {
-    bool: 'bool',
-    int: 'int',
-    float: 'float',
-    str: 'string',
-    unicode: 'string',
-    None: 'null',
-    tuple: 'tuple',
-    list: 'list',
-    dict: 'dict'
+    bool:       'bool',
+    int:        'int',
+    float:      'float',
+    str:        'string',
+    unicode:    'string',
+    None:       'null',
+    tuple:      'tuple',
+    list:       'list',
+    dict:       'dict'
 }
 
 
@@ -582,65 +474,94 @@ Factories
 """
 
 
-class _FactoryBase(object):
-    types = {}
-    default = None
+# class _FactoryBase(object):
+#     # types = {}
+#     schemas = {}
+#     default = None
 
-    def __new__(cls, path, *args, **kwargs):
-        if isinstance(path, Path):
-            suffix = path.suffix
-        else:
-            suffix = service.suffix(path)
-        Datatype = cls.types.get(suffix) or cls.default
-        return Datatype(path, *args, **kwargs)
+#     def __new__(cls, path, *args, **kwargs):
+#         if isinstance(path, Path):
+#             suffix = path.suffix
+#         else:
+#             suffix = service.suffix(path)
+#         Datatype = cls.schemas.get(suffix) or cls.default
 
-    @classmethod
-    def register(cls, type):
-        cls.types[type.__name__.lower()] = type
+#         Datatype = type(Datatype.__name__, (Datatype,),
+#                         {'my_default_value': 5})
 
-    @classmethod
-    def unregister(cls, type):
-        pass
+#         return Datatype(path, *args, **kwargs)
 
+#     @classmethod
+#     def register(cls, typ):
+#         cls.schemas[typ.__name__.lower()] = typ
 
-class GroupFactory(_FactoryBase):
-    types = {}
-    default = Group
-
-
-class DatasetFactory(_FactoryBase):
-    types = {}
-    default = Dataset
+#     @classmethod
+#     def unregister(cls, type):
+#         raise NotImplementedError
 
 
-supported_types = {
-    'datasets': (
-        Bool,
-        Int,
-        Float,
-        String,
-        Text,
-        Date,
-        Null
-    ),
-    'groups': (
-        Enum,
-        Tuple,
-        List,
-        Dict
-    )
+# class GroupFactory(_FactoryBase):
+#     schemas = {}
+#     default = Group
+
+
+# class DatasetFactory(_FactoryBase):
+#     schemas = {}
+#     default = Dataset
+
+defaults = {
+    'bool':   False,
+    'int':    0,
+    'float':  0.0,
+    'string': '',
+    'test':   '',
+    'date':   service.currenttime,
+    'list':   [],
+    'dict':   {}
 }
 
+# schemas = {
+#     'datasets': {
+#         'bool':     {'default_value': False},
+#         'int':      {'default_value': 0},
+#         'float':    {'default_value': 0.0},
+#         'string':   {'default_value': ''},
+#         'test':     {'default_value': ''},
+#         'date':     {'default_value': service.currenttime},
+#     },
+#     'groups': {
+#         'list':     {'default_value': {}}
+#     }
+# }
 
-def register():
-    for dataset in supported_types['datasets']:
-        DatasetFactory.register(dataset)
+# supported_types = {
+#     'datasets': (
+#         Bool,
+#         Int,
+#         Float,
+#         String,
+#         Text,
+#         Date,
+#         Null
+#     ),
+#     'groups': (
+#         Enum,
+#         Tuple,
+#         List,
+#         Dict
+#     )
+# }
 
-    for group in supported_types['groups']:
-        GroupFactory.register(group)
+
+# def register():
+#     for suffix in schemas['datasets']:
+#         DatasetFactory.register(suffix)
+
+#     for suffix in schemas['groups']:
+#         GroupFactory.register(suffix)
 
 
-register()
+# register()
 
 
 if __name__ == '__main__':

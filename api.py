@@ -74,8 +74,8 @@ Dataset     -- Main vessel of data
 
 Node = lib.Node
 Location = lib.Location
-Group = lib.GroupFactory
-Dataset = lib.DatasetFactory
+Group = lib.Group
+Dataset = lib.Dataset
 Imprint = lib.Imprint
 History = lib.History
 
@@ -83,13 +83,13 @@ History = lib.History
 # Functionality
 
 
-def _precheck(node):
-    if node.haschildren:
-        for child in node:
-            _precheck(child)
-    else:
-        if not node.isvalid:
-            raise ValueError("%s was not valid" % node.path.as_str)
+# def _precheck(node):
+#     if node.haschildren:
+#         for child in node:
+#             _precheck(child)
+#     else:
+#         if not node.isvalid:
+#             raise ValueError("%s was not valid" % node.path.as_str)
 
 
 def dump(node, track_history=True, simulate=False):
@@ -101,7 +101,7 @@ def dump(node, track_history=True, simulate=False):
         is modified in any way prior to this method being called.
 
     """
-    _precheck(node)
+    # _precheck(node)
     return _dump(node, track_history, simulate)
 
 
@@ -239,7 +239,7 @@ def pull(node, lazy=False, depth=1, merge=False, _level=1):
             if dir_.startswith("."):
                 continue
 
-            lib.GroupFactory(dir_, parent=node)
+            Group(dir_, parent=node)
 
         for file_ in files:
             if file_.startswith("."):
@@ -357,7 +357,10 @@ def existing(node):
                 name = basename
 
             if node.path.name == name:
+                print "Making %s of %s" % (typ, basename)
                 node_ = typ(basename)
+                print "Which became: %r" % node_
+                print "With suffix: %s" % node_.type
                 node_._parent = node._parent
                 existing.append(node_)
 
@@ -748,7 +751,7 @@ def write(path, metapath, data=None):
     Convenience-method for quickly writing out `data` to `path`
 
     Example
-        >> om.write(r'c:\users\marcus', 'Hello there', 'introduction')
+        >> om.write(r'c:\users\marcus', 'introduction', 'My name is Marcus')
 
     """
 
@@ -759,7 +762,7 @@ def write(path, metapath, data=None):
     groups = parts
     root = location
     for group in groups:
-        group = lib.GroupFactory(group, parent=root)
+        group = Group(group, parent=root)
         root = group
 
     # Is it a group or a dataset?
@@ -769,6 +772,7 @@ def write(path, metapath, data=None):
         typ = type(data)
     item_type = lib.python_to_om(typ)
 
+    print repr(item_type)
     dataset = item_type(dataset, data=data, parent=root)
 
     # Resolve missing suffix
@@ -779,7 +783,8 @@ def write(path, metapath, data=None):
 
     # Ensure no duplicates exists
     for node in existing(dataset):
-        if node.path.suffix == dataset.path.suffix:
+        print "Checking %s" % node.path
+        if node.type == dataset.type:
             continue
         raise error.Exists("%s already exists" % dataset.path)
 
