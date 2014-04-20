@@ -161,11 +161,21 @@ class Node(object):
 
         self._children[key] = child
 
-    def copy(self, path=None, data=None):
+    def copy(self, path=None, deep=False, parent=None):
         path = path or self.relativepath
-        data = data = self._data
+        copy = self.__class__(path, parent=parent)
 
-        copy = self.__class__(path, data)
+        # Perform a deep copy, including all children
+        if self.haschildren:
+            if deep:
+                for _, value in self._value.iteritems():
+                    value.copy(deep=True, parent=copy)
+        else:
+            copy._value = self._value
+
+        # Make the copy aware of `self` parent, but `self`
+        # should not be aware of `copy` as a child, as it would
+        # cause `self` to get a duplicate child per copy.
         copy._parent = self._parent
 
         return copy

@@ -43,4 +43,3 @@ Node now allows for children; descendants of Blob merely have their children de-
 ### Removals
 
 * lib.TreeNode  -- Was removed due to unifications of children in all Node objects
-* History 		-- Temporarily

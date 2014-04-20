@@ -118,8 +118,8 @@ def _dump(node, track_history=True, simulate=False):
 
         if not simulate:
             if node.isdirty:
-                # if track_history:
-                #     _make_history(node)
+                if track_history:
+                    _make_history(node)
 
                 service.dump(path, data)
 
@@ -587,6 +587,9 @@ def _make_history(node):
     parent = node.parent
     basename = node.path.basename
 
+    # Avoid our `copy` adding itself as a child
+    # to `parent`; this would cause the dictionary
+    # containing the parents children to change.
     parent = parent.copy()
 
     imprint_time = service.currenttime()
