@@ -2,7 +2,7 @@ import logging
 
 # from openmetadata import lib
 from openmetadata import error
-from openmetadata.api2 import *
+from openmetadata.api import *
 from openmetadata.version import *
 
 

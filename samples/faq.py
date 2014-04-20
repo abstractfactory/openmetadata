@@ -14,10 +14,10 @@ import os
 
 import openmetadata as om
 
-path = os.path.expanduser(r'~')
+path = os.path.expanduser(r'~/examples')
 
 """
-Q: Why store data in relation to content?
+Q: Why associate metadata with content?
 
 A: To support the notion of programmable content. Like with documentation
     and the code it documents, metadata changes often and storing it
@@ -32,33 +32,9 @@ def why_simple_data():
     """Store data that we might need to change later"""
     location = om.Location(path)
     girlfriend = om.Dataset('girlfriend', parent=location)
-    girlfriend.data = 'Sweet Heartsson'
+    girlfriend.value = 'Sweet Heartsson'
     om.dump(girlfriend)
-
-
-"""
-Q: How do I concatenate paths?
-
-A: With Open Metadata nodes, there should be very little reason to have
-    to manually concatenate paths. The reason this is is because Open
-    Metadata could run on any platform, and won't necessarily be dealing
-    with paths on a file-system; e.g. they might be paths in a database or
-    any arbitrary storage-model.
-"""
-
-
-def no_concatenation():
-    location = om.Location(path)
-    firstchild = location.children.next()
-
-    parent_dir = os.path.dirname(firstchild.path)
-    otherchild_path = os.path.join(parent_dir, 'guessed_path')
-
-    # As dataset expects a relative name, this won't work.
-    try:
-        om.Dataset(name=otherchild_path, parent=location)
-    except om.error.RelativePath:
-        print "Defeated.."
+    om.clear(path)
 
 
 """
@@ -88,16 +64,17 @@ def storing_collection_as_blobs():
 
     path = '/project/asset'
     location = om.Location(path)
-    mydata = om.Blob('mydata', parent=location)
-    mydata.data = '/path/to/mydata.json'
-    om.dump(mydata)
+    myvalue = om.Variable('myvalue', parent=location)
+    myvalue.value = '/path/to/myvalue.json'
+    myvalue.isblob = True
+    om.dump(myvalue)
 
     # Retreiving stored blob
-    mydata = om.read(path, 'mydata')
-    mydata.path
-    # --> '/project/asset/.meta/mydata.json'
+    myvalue = om.read(path, 'myvalue')
+    myvalue.path
+    # --> '/project/asset/.meta/myvalue.json'
 
-    assert mydata.data == mydata.path
+    assert myvalue.value == myvalue.path
 
 
 def storing_collection_as_open_metadata():
@@ -112,12 +89,12 @@ def storing_collection_as_open_metadata():
 
      _______________________       ___________________________________________
     |                       |     |                                           |
-    | ['entry1', 'entry2' ] |---->| /location/.meta/mydata.list/entry1.string |
+    | ['entry1', 'entry2' ] |---->| /location/.meta/myvalue.list/0.string     |
     |_______________________| |   |___________________________________________|
                               |
                               |    ___________________________________________
                               |   |                                           |
-                              \-->| /location/.meta/mydata.list/entry2.string |
+                              \-->| /location/.meta/myvalue.list/1.string     |
                                   |___________________________________________|
 
     The advantage of each ultimately depends on your use-case, but in short:
@@ -126,28 +103,21 @@ def storing_collection_as_open_metadata():
     - If control < performance, use Blobs
 
     """
-
     raise NotImplementedError
 
-    path = '/project/asset'
     location = om.Location(path)
-    mydata = om.Group('mydata.list', parent=location)
-    mydata = ['entry1', 'entry2']
-    om.dump(mydata)
+    myvalue = om.Variable('myvalue', parent=location)
+    myvalue.value = ['entry1', 'entry2']
+    om.dump(myvalue)
 
     # Retreiving stored blob
-    mydata = om.read(path, 'mydata')
-    mydata.path
-    # --> '/project/asset/.meta/mydata.list'
+    myvalue = om.read(path, 'myvalue')
+    myvalue == ['entry1', 'entry2']
 
-    mydata.data
-    # --> [String('entry1'), String('entry2')]
-
-    assert mydata.data != mydata.path
+    assert myvalue.value != myvalue.path
 
 
 """
 Q: How do I traverse a hierarchy?
 
-A: Hierarchies are 
 """

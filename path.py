@@ -45,7 +45,7 @@ class Path(object):
     PARENT_DIR = '..'
     CURRENT_DIR = '.'
     CONTAINER = '.meta'
-    OPTIONDIV = '&'
+    OPTSEP = '&'
     SEPARATOR = '/'
     METASEP = '/'  # Separator of metapaths
     PROCSEP = '/'  # Separator of `processing` (see above)
@@ -200,7 +200,7 @@ class Path(object):
         basename = parts.pop()
 
         try:
-            basename, option = basename.split(cls.OPTIONDIV)
+            basename, option = basename.split(cls.OPTSEP)
         except:
             option = None
 
@@ -287,7 +287,7 @@ class Path(object):
 
     @property
     def option(self):
-        """Return part of path following `OPTIONDIV`
+        """Return part of path following `OPTSEP`
 
         Example
             >>> path = Path('/root/child&2013-04')
@@ -446,7 +446,7 @@ class Path(object):
         if not self.__as_raw:
             self.__as_raw = self._path
             if self.hasoption:
-                self.__as_raw += self.OPTIONDIV + self.__option
+                self.__as_raw += self.OPTSEP + self.__option
         return self.__as_raw
 
     @property
@@ -466,7 +466,7 @@ class Path(object):
         if not self.__as_str:
             self.__as_str = self.deparse()
             if self.hasoption:
-                self.__as_str += self.OPTIONDIV + self.__option
+                self.__as_str += self.OPTSEP + self.__option
         return self.__as_str
 
     @property
@@ -582,8 +582,8 @@ if __name__ == '__main__':
     # print os.path.join(path.parent.parent.as_str, 'local')
     # print path.parent.parent.parent
     # path = Path('/root/.meta/child')
-    # print Path.OPTIONDIV
-    # print '/test/some&folder'.rsplit(Path.OPTIONDIV)
+    # print Path.OPTSEP
+    # print '/test/some&folder'.rsplit(Path.OPTSEP)
     # print Path.splitoption('/test/some&folder')
     
     # print path.basename

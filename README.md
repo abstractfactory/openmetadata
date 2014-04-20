@@ -12,9 +12,6 @@ Creator of Open Metadata
 
 For more, head over to [/samples](https://github.com/abstractfactory/openmetadata/tree/master/samples)
 
-Usergroup here
-https://groups.google.com/forum/#!forum/open-metadata
-
 # Features
 
 There for you when..

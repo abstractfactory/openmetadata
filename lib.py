@@ -19,13 +19,30 @@ path_map = {'nt': path.WindowsPath,
 Path = path_map[osname]
 
 
+type_to_suffix = {
+    bool:       'bool',
+    int:        'int',
+    float:      'float',
+    str:        'string',
+    unicode:    'string',
+    None:       'null',
+    tuple:      'tuple',
+    list:       'list',
+    dict:       'dict'
+}
+
+
 class Node(object):
 
     __metaclass__ = abc.ABCMeta
     log = logging.getLogger('openmetadata.lib.Node')
 
     def __iter__(self):
-        value = self.value
+        value = self._value
+
+        if not value:
+            return
+
         if isinstance(value, dict):
             for key, value in value.iteritems():
                 # Filtering
@@ -42,7 +59,7 @@ class Node(object):
 
     def __getitem__(self, item):
         try:
-            if not self.haschildren:
+            if not self.iscollection:
                 raise KeyError
             return self._value[item]
 
@@ -53,14 +70,14 @@ class Node(object):
         return key in self._value
 
     def __str__(self):
-        return self.path.name
+        return self.raw_path.name
 
     def __repr__(self):
-        return u"%s(%r)" % (self.__class__.__name__, self.__str__())
+        return u"%s.%s(%r)" % (__name__, type(self).__name__, self.__str__())
 
     def __eq__(self, other):
         """
-        Nodes within a single parent all have unique names.
+        Variables within a parent MUST all have unique names.
         If a name is not unique, there is a bug.
 
         """
@@ -84,17 +101,15 @@ class Node(object):
 
         self._value = value
         self._parent = []
+        self._iscollection = None
+        self._mro = [self]
 
         if parent:
             parent.add(self)
 
     @property
-    def rawpath(self):
-        return self._path
-
-    @property
     def path(self):
-        path = self.rawpath
+        path = self.raw_path
 
         try:
             parent = next(self.parent)
@@ -109,6 +124,14 @@ class Node(object):
         self._isvalid = True
 
         return path
+
+    @property
+    def raw_path(self):
+        return self._path
+
+    @property
+    def mro(self):
+        return self._mro
 
     @property
     def location(self):
@@ -136,7 +159,7 @@ class Node(object):
         """
 
         if not self._type:
-            self._type = string_to_python(self.path.suffix)
+            self._type = self.path.suffix
 
         return self._type
 
@@ -144,24 +167,21 @@ class Node(object):
         if not isinstance(self._value, dict):
             self._value = {}
 
-        path = child.rawpath
+        path = child.raw_path
         key = path.name
 
         if path.hasoption:
-            key += path.OPTIONDIV + path.option
-
-        # if key in self._value:
-        #     self.log.warning("%s was overwritten" % child.path)
+            key += path.OPTSEP + path.option
 
         self._value[key] = child
         child._parent.append(self)
 
     def copy(self, path=None, deep=False, parent=None):
-        path = path or self.rawpath
+        path = path or self.raw_path
         copy = self.__class__(path, parent=parent)
 
         # Perform a deep copy, including all children
-        if self.haschildren:
+        if self.iscollection:
             if deep:
                 for _, value in self._value.iteritems():
                     value.copy(deep=True, parent=copy)
@@ -188,11 +208,13 @@ class Node(object):
 
     def ls(self, _level=0):
         """List contained children"""
-        print '\t' * _level + self.path.name
+        tree = '\t' * _level + self.path.name + '\n'
 
-        if self.haschildren:
+        if self.iscollection:
             for node in self:
-                node.ls(_level + 1)
+                tree += node.ls(_level + 1)
+
+        return tree
 
     @property
     def parent(self):
@@ -215,14 +237,32 @@ class Node(object):
         else:
             dt = type(value)
 
-        typ = python_to_string(dt)
-        return self.rawpath.copy(suffix=typ)
+        suffix = type_to_suffix.get(dt)
+        return self.raw_path.copy(suffix=suffix)
+
+    @property
+    def iscollection(self):
+        """`self` contains one or more variables
+
+        Description
+            A Variable containing other variables is referred
+            to as a collection; on a file-system, a collection
+            represents a folder. Non-collections are then files.
+
+        """
+
+        if self._iscollection is None:
+            return isinstance(self._value, dict)
+        return self._iscollection
+
+    @iscollection.setter
+    def iscollection(self, value):
+        """Manually specify if object is a collection"""
+        self._iscollection = value
 
     @property
     def haschildren(self):
-        if isinstance(self._value, dict) and self._value:
-            return True
-        return False
+        return self.iscollection and self._value
 
     @property
     def hasvalue(self):
@@ -257,20 +297,20 @@ class Location(Node):
         if not self._path.isabsolute:
             raise error.RelativePath('Path must be absolute: %s' % path)
 
-        if not service.exists(self.path.as_str):
-            raise error.Exists("The path to a Location object "
-                               "must previously exist")
-
     @property
     def path(self):
         return self._path + self._path.CONTAINER
 
     @property
     def parent(self):
-        yield Location(self._path)
+        yield Location(self._path.parent)
 
     def dump(self):
         raise NotImplementedError
+
+    @property
+    def haschildren(self):
+        return True
 
     @property
     def hasparent(self):
@@ -290,6 +330,9 @@ class Variable(Node):
         A storage location and an associated symbolic name
         (an identifier) which contains some known or unknown
         quantity or information, a value.
+
+        On disk, a variable is both a file and a folder; depe-
+        nding on its value. E.g. a list if a folder, bool is a file.
 
     Reference
         http://en.wikipedia.org/wiki/Variable_(computer_science)
@@ -313,15 +356,27 @@ class Variable(Node):
         self._path = self._resolve_suffix(value)
         assert self.path.suffix
 
-        self._value = None
+        # Reset iscollection flag.
+        #
+        # Whether or not `self` is a collection is
+        # henceforth determined by its corresponding value.
+        #
+        self._iscollection = None
+
+        # Values are always overridden.
+        self.clear()
 
         if isinstance(value, list):
+            self._value = {}
+
             index = 0
             for child in value:
                 Variable(str(index), value=child, parent=self)
                 index += 1
 
         elif isinstance(value, dict):
+            self._value = {}
+
             for key, value in value.iteritems():
                 Variable(key, value=value, parent=self)
 
@@ -378,32 +433,32 @@ class Variable(Node):
 #         return self._time
 
 
-_python_to_string = {
-    bool:       'bool',
-    int:        'int',
-    float:      'float',
-    str:        'string',
-    unicode:    'string',
-    None:       'null',
-    tuple:      'tuple',
-    list:       'list',
-    dict:       'dict'
-}
+# type_to_suffix = {
+#     bool:       'bool',
+#     int:        'int',
+#     float:      'float',
+#     str:        'string',
+#     unicode:    'string',
+#     None:       'null',
+#     tuple:      'tuple',
+#     list:       'list',
+#     dict:       'dict'
+# }
 
 
-def python_to_string(obj):
-    if obj == type(None):
-        obj = None
+# def python_to_string(obj):
+#     if obj is type(None):
+#         obj = None
 
-    string = _python_to_string.get(obj)
-    if not string:
-        raise ValueError("Unrecognised Python datatype: %r" % obj)
-    return string
+#     string = type_to_suffix.get(obj)
+#     if not string:
+#         raise ValueError("Unrecognised Python datatype: %r" % obj)
+#     return string
 
 
-def string_to_python(obj):
-    _map = dict((v, k) for (k, v) in _python_to_string.items())
-    return _map.get(obj)
+# def string_to_python(obj):
+#     _map = dict((v, k) for (k, v) in type_to_suffix.items())
+#     return _map.get(obj)
 
 
 """
@@ -413,94 +468,16 @@ Factories
 """
 
 
-# class _FactoryBase(object):
-#     # types = {}
-#     schemas = {}
-#     default = None
-
-#     def __new__(cls, path, *args, **kwargs):
-#         if isinstance(path, Path):
-#             suffix = path.suffix
-#         else:
-#             suffix = service.suffix(path)
-#         Datatype = cls.schemas.get(suffix) or cls.default
-
-#         Datatype = type(Datatype.__name__, (Datatype,),
-#                         {'my_default_value': 5})
-
-#         return Datatype(path, *args, **kwargs)
-
-#     @classmethod
-#     def register(cls, typ):
-#         cls.schemas[typ.__name__.lower()] = typ
-
-#     @classmethod
-#     def unregister(cls, type):
-#         raise NotImplementedError
-
-
-# class GroupFactory(_FactoryBase):
-#     schemas = {}
-#     default = Group
-
-
-# class DatasetFactory(_FactoryBase):
-#     schemas = {}
-#     default = Dataset
-
 defaults = {
     'bool':   False,
     'int':    0,
     'float':  0.0,
     'string': '',
-    'test':   '',
+    'text':   '',
     'date':   service.currenttime,
     'list':   [],
     'dict':   {}
 }
-
-# schemas = {
-#     'datasets': {
-#         'bool':     {'default_value': False},
-#         'int':      {'default_value': 0},
-#         'float':    {'default_value': 0.0},
-#         'string':   {'default_value': ''},
-#         'test':     {'default_value': ''},
-#         'date':     {'default_value': service.currenttime},
-#     },
-#     'groups': {
-#         'list':     {'default_value': {}}
-#     }
-# }
-
-# supported_types = {
-#     'datasets': (
-#         Bool,
-#         Int,
-#         Float,
-#         String,
-#         Text,
-#         Date,
-#         Null
-#     ),
-#     'groups': (
-#         Enum,
-#         Tuple,
-#         List,
-#         Dict
-#     )
-# }
-
-
-# def register():
-#     for suffix in schemas['datasets']:
-#         DatasetFactory.register(suffix)
-
-#     for suffix in schemas['groups']:
-#         GroupFactory.register(suffix)
-
-
-# register()
 
 
 if __name__ == '__main__':
@@ -518,7 +495,7 @@ if __name__ == '__main__':
     # ostring = om.Dataset('test', value=False, parent=location)
     ostring = om.Dataset('test', value=None, parent=location)
     print ostring.path
-    new_path = ostring.rawpath.copy(suffix='null')
+    new_path = ostring.raw_path.copy(suffix='null')
     # print ostring.copy(path=new_path).path
     # print ostring.value
     # ostring.value = 5

@@ -10,30 +10,32 @@ om.setup_log()
 
 # Starting-point
 path = os.path.expanduser(r'~')
+om.clear(path)
 
 location = om.Location(path)
 
+
 # Add a regular string
-ostring = om.Dataset('simple_data', parent=location)
-ostring.data = 'my simple string'
+ostring = om.Variable('simple_data', parent=location)
+ostring.value = 'my simple string'
 
 # Add a list
-olist = om.Group('mylist.list', parent=location)
+olist = om.Variable('mylist.list', parent=location)
 
 # Containing three datasets..
-l1 = om.Dataset('item1.string', data='a string value', parent=olist)
-l2 = om.Dataset('item2.bool', data=True, parent=olist)
-l3 = om.Dataset('item3.int', data=5, parent=olist)
+l1 = om.Variable('item1.string', value='a string value', parent=olist)
+l2 = om.Variable('item2.bool', value=True, parent=olist)
+l3 = om.Variable('item3.int', value=5, parent=olist)
 
 # ..and a dictionary..
-odict = om.Group('mydict.dict', parent=olist)
+odict = om.Variable('mydict.dict', parent=olist)
 
 # ..with two keys
-key1 = om.Dataset('key1.string', data='value', parent=odict)
+key1 = om.Variable('key1.string', value='value', parent=odict)
 
-# One of which, we neglect to specify a data-type.
-# The data-type will be determined via the Python data-type <str>
-key2 = om.Dataset('key2', data='value', parent=odict)
+# One of which, we neglect to specify a value-type.
+# The value-type will be determined via the Python value-type <str>
+key2 = om.Variable('key2', value='value', parent=odict)
 
 # Finally, write it to disk.
 om.dump(location)
@@ -43,16 +45,12 @@ om.dump(location)
 
 assert om.read(path) == ['mylist', 'simple_data']
 
-print om.read(path, 'mylist')
-# --> [Bool('item2.bool'), Int('item3.int'), ...]
+assert om.read(path, 'mylist') == ['item2', 'item3', 'item1', 'mydict']
 
-print om.read(path, 'mylist/item2')
-# # --> True
-
-for item in om.read(path):
-    print item
-# # --> c:\users\marcus\om2\.meta\mylist.list
-# --> c:\users\marcus\om2\.meta\simple_data.string
+assert om.read(path, 'mylist/item2') is True
 
 
-# ----------- Remove
+# ------------ Remove additions
+
+
+om.clear(path)
