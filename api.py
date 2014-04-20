@@ -587,6 +587,8 @@ def _make_history(node):
     parent = node.parent
     basename = node.path.basename
 
+    parent = parent.copy()
+
     imprint_time = service.currenttime()
     imprint_name = "%s&%s" % (basename, imprint_time)
 
@@ -858,7 +860,6 @@ __all__ = [
 
     # Main functionality
     'dump',
-    # 'dumps',  # On-hold, due to ambivalent functionality
     'read',
     'write',
     'pull',
@@ -871,7 +872,6 @@ __all__ = [
     'history',
 
     # Convenience functionality
-    # 'listdir',  # On-hold, possibly frivilous
     'hasdata',
     'islocation',
     'isdataset',
