@@ -1,4 +1,3 @@
-<!-- ![](https://dl.dropbox.com/s/f756p54ermi9wto/openmetadata_black_small_rgb_aw1.png) -->
 ![](https://dl.dropbox.com/s/frgz506hx49i9rt/openmetadata_black_med_rgb_aw1.png)
 
 Associate metadata with folders on your file-system.
@@ -12,6 +11,9 @@ Creator of Open Metadata
 ```
 
 For more, head over to [/samples](https://github.com/abstractfactory/openmetadata/tree/master/samples)
+
+Usergroup here
+https://groups.google.com/forum/#!forum/open-metadata
 
 # Features
 
@@ -86,6 +88,11 @@ In a data-oriented architecture, data controls the flow of information, not your
 This way, implementers can design their software by means of placing content, in a hierarchy for instance, that governs what actions the software may take in which order.
 
 Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an stateful, intelligent unit capable of making desicions; this is what I call programmable content.
+
+# Usergroup
+
+We're all having a good time, here, join us
+https://groups.google.com/forum/#!forum/open-metadata
 
 [RFC13]: http://rfc.abstractfactory.io/spec/13
 [release]: https://github.com/abstractfactory/openmetadata/releases

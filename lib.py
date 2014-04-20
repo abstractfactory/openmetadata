@@ -20,35 +20,37 @@ Path = path_map[osname]
 
 
 class Node(object):
-    """
-     ____
-    |    |_______
-    |            |
-    |            |
-    |            |
-    |____________|
-
-    A node represents an entry in a database
-
-    """
 
     __metaclass__ = abc.ABCMeta
-
-    default_value = None
+    log = logging.getLogger('openmetadata.lib.Node')
 
     def __iter__(self):
-        for child in self.children:
-            yield child
+        value = self.value
+        if isinstance(value, dict):
+            for key, value in value.iteritems():
+                # Filtering
+                #
+                # TODO: make this more explicit,
+                # and configurable.
+                if key.startswith('.'):
+                    continue
+
+                yield value
+        else:
+            for value in self.value:
+                yield value
 
     def __getitem__(self, item):
         try:
-            return self._children[item]
+            if not self.haschildren:
+                raise KeyError
+            return self._value[item]
+
         except KeyError:
-            raise KeyError("%r not in %r"
-                           % (item, self))
+            raise KeyError("%r not in %r" % (item, self))
 
     def __contains__(self, key):
-        return key in self._children
+        return key in self._value
 
     def __str__(self):
         return self.path.name
@@ -70,11 +72,8 @@ class Node(object):
     def __hash__(self):
         return hash(str(self))
 
-    def __children__(self):
-        return self._children
-
     @abc.abstractmethod  # Prevent direct instantiation
-    def __init__(self, path, data=None, parent=None):
+    def __init__(self, path, value=None, parent=None):
         if isinstance(path, basestring):
             path = Path(path)
 
@@ -83,40 +82,31 @@ class Node(object):
         self._suffix = None  # cache
         self._isvalid = None
 
-        self._children = {}
-        self._data = data
-        self._parent = parent
+        self._value = value
+        self._parent = []
 
         if parent:
-            if isinstance(parent, Blob):
-                raise TypeError("Parent must be a Group")
             parent.add(self)
 
-        # print self.path
-
     @property
-    def relativepath(self):
+    def rawpath(self):
         return self._path
 
     @property
     def path(self):
-        path = self.relativepath
+        path = self.rawpath
 
-        if hasattr(self, 'parent'):
-            parent = self.parent
+        try:
+            parent = next(self.parent)
+        except StopIteration:
+            return path
 
-            if not parent:
-                # The node has a parent attribute,
-                # but no parent has been set.
-                self._isvalid = False
-                return path
+        parent_path = parent.path
+        if hasattr(parent, 'resolved_path'):
+            parent_path = parent.resolved_path
 
-            parent_path = parent.path
-            if hasattr(parent, 'resolved_path'):
-                parent_path = parent.resolved_path
-
-            path = parent_path + path
-            self._isvalid = True
+        path = parent_path + path
+        self._isvalid = True
 
         return path
 
@@ -151,76 +141,92 @@ class Node(object):
         return self._type
 
     def add(self, child):
-        path = child.relativepath
+        if not isinstance(self._value, dict):
+            self._value = {}
+
+        path = child.rawpath
         key = path.name
 
         if path.hasoption:
             key += path.OPTIONDIV + path.option
 
-        if key in self._children:
-            self.LOG.warning("%s was overwritten" % child.path)
+        # if key in self._value:
+        #     self.log.warning("%s was overwritten" % child.path)
 
-        self._children[key] = child
+        self._value[key] = child
+        child._parent.append(self)
 
-    def copy(self, path=None, data=None):
-        path = path or self.relativepath
-        data = data = self._data
+    def copy(self, path=None, deep=False, parent=None):
+        path = path or self.rawpath
+        copy = self.__class__(path, parent=parent)
 
-        copy = self.__class__(path, data)
+        # Perform a deep copy, including all children
+        if self.haschildren:
+            if deep:
+                for _, value in self._value.iteritems():
+                    value.copy(deep=True, parent=copy)
+        else:
+            copy._value = self._value
+
+        # Make the copy aware of `self` parent, but `self`
+        # should not be aware of `copy` as a child, as it would
+        # cause `self` to get a duplicate child per copy.
         copy._parent = self._parent
 
         return copy
 
     def clear(self):
-        """Remove existing data/children"""
-        while self._children:
-            self._children.popitem()
+        """Remove existing value/children"""
+        if isinstance(self._value, dict):
+            while self._value:
+                self._value.popitem()
+        elif isinstance(self._value, list):
+            while self._value:
+                self._value.pop()
+        else:
+            self._value = None
 
-        self._data = None
-
-    def ls(self):
+    def ls(self, _level=0):
         """List contained children"""
-        print self.path.name
-        for node in self:
-            print '\t' + node.path.name
+        print '\t' * _level + self.path.name
 
-    @property
-    def children(self):
-        for name, path in self._children.iteritems():
-            if not name.startswith('.'):
-                yield path
+        if self.haschildren:
+            for node in self:
+                node.ls(_level + 1)
 
     @property
     def parent(self):
-        return self._parent
+        for parent in self._parent:
+            yield parent
 
     @property
-    def data(self):
-        if self._data is None:
+    def value(self):
+        if self._value is None:
             return defaults.get(self.type)
-        return self._data
+        return self._value
 
-    @data.setter
-    def data(self, data):
-        self._data = data
-        self.isdirty = True
+    @value.setter
+    def value(self, value):
+        raise NotImplementedError
 
-    def _resolve_suffix(self, data=None):
-        if data is None:
+    def _resolve_suffix(self, value=None):
+        if value is None:
             dt = None
         else:
-            dt = type(data)
+            dt = type(value)
 
         typ = python_to_string(dt)
-        return self.relativepath.copy(suffix=typ)
-
-    @property
-    def hasdata(self):
-        return True if getattr(self, 'data', None) else False
+        return self.rawpath.copy(suffix=typ)
 
     @property
     def haschildren(self):
-        return self._children != {}
+        if isinstance(self._value, dict) and self._value:
+            return True
+        return False
+
+    @property
+    def hasvalue(self):
+        return self._value is not None
 
     @property
     def hasparent(self):
@@ -256,12 +262,12 @@ class Location(Node):
                                "must previously exist")
 
     @property
-    def data(self):
-        return self._children.values()
+    def path(self):
+        return self._path + self._path.CONTAINER
 
     @property
-    def resolved_path(self):
-        return self.path + self._path.CONTAINER
+    def parent(self):
+        yield Location(self._path)
 
     def dump(self):
         raise NotImplementedError
@@ -271,172 +277,105 @@ class Location(Node):
         return True
 
 
-class Group(Node):
+class Variable(Node):
     """
      ____
-    |    |_______
+    |____|______
+    |          |\
     |            |
-    |     om     |
     |            |
     |____________|
 
-    A container of additional groups and datasets.
+    Description
+        A storage location and an associated symbolic name
+        (an identifier) which contains some known or unknown
+        quantity or information, a value.
 
-    """
-
-    LOG = logging.getLogger('openmetadata.lib.Group')
-
-    def __iter__(self):
-        for child in self.children:
-            yield child
-
-    def __init__(self, *args, **kwargs):
-        super(Group, self).__init__(*args, **kwargs)
-
-        if self.relativepath.isabsolute:
-            raise error.RelativePath('Path must be relative: %r'
-                                     % self.relativepath.as_str)
-
-    @property
-    def data(self):
-        return self._children.values()
-
-    @data.setter
-    def data(self, value):
-        raise NotImplementedError
-
-    def dump(self):
-        raise NotImplementedError
-
-
-class Blob(Node):
-    """
-     ______
-    |       \
-    |        |
-    |        |
-    |        |
-    |________|
+    Reference
+        http://en.wikipedia.org/wiki/Variable_(computer_science)
 
     """
 
     def __init__(self, *args, **kwargs):
-        super(Blob, self).__init__(*args, **kwargs)
+        super(Variable, self).__init__(*args, **kwargs)
 
-        if self.relativepath.isabsolute:
-            raise error.RelativePath('Path must be relative: %r'
-                                     % self.relativepath.as_str)
-
-        # Nodes are dirty until they are pulled, and
-        # made dirty again via setattr(self.data)
-        self.isdirty = True
-
-    def load(self, data):
-        raise NotImplementedError
-
-    def dump(self):
-        """To dump a blob means to hardlink"""
-        return json.dumps(self.path.as_str)
+        if len(args) > 1:
+            self.value = args[1]
+        elif 'value' in kwargs:
+            self.value = kwargs.get('value')
 
     @property
-    def haschildren(self):
-        return False
+    def value(self):
+        return super(Variable, self).value
 
-    # def __getattr__(self, metaattr):
-    #     """Retrieve meta-metadata as per RFC15"""
-    #     raise NotImplementedError("Attempted to get "
-    #                               "meta-metadata from %s" % self)
-
-
-class Dataset(Blob):
-    """
-     ______
-    |       \
-    |        |
-    |   om   |
-    |        |
-    |________|
-
-    A Dataset is a Open Metadata-recognisable blob
-
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(Dataset, self).__init__(*args, **kwargs)
-
-        # Based on the data given, determine an initial suffix
-        self._path = self._resolve_suffix(kwargs.get('data'))
-
-    @property
-    def data(self):
-        return super(Dataset, self).data
-
-    @data.setter
-    def data(self, data):
-        self._path = self._resolve_suffix(data)
+    @value.setter
+    def value(self, value):
+        self._path = self._resolve_suffix(value)
         assert self.path.suffix
 
-        self._data = data
-        self.isdirty = True
+        self._value = None
 
-    def load(self, data):
-        """De-serialise `data` into `self`"""
+        if isinstance(value, list):
+            index = 0
+            for child in value:
+                Variable(str(index), value=child, parent=self)
+                index += 1
+
+        elif isinstance(value, dict):
+            for key, value in value.iteritems():
+                Variable(key, value=value, parent=self)
+
+        else:
+            assert json.dumps(value)
+            self._value = value
+
+    def load(self, value):
+        """De-serialise `value` into `self`"""
         try:
-            self.data = json.loads(data)
+            self.value = json.loads(value)
         except ValueError:
-            LOG.warning("%s contains invalid data" % self.path)
-            self.data = data
+            LOG.warning("%s contains invalid value" % self.path)
+            self.value = value
 
     def dump(self):
         """Serialise contents of `self`"""
-        return json.dumps(self.data)
+        assert not isinstance(self._value, dict)
+        return json.dumps(self.value)
 
 
-class History(Group):
-    pass
+# class Imprint(Group):
+#     def __init__(self, *args, **kwargs):
+#         super(Imprint, self).__init__(*args, **kwargs)
+#         self._time = None
 
+#     @property
+#     def time(self):
+#         """
+#         Return tuple of recorded time.
 
-class Versions(Group):
-    pass
+#         Example
+#             >>> imprint = Imprint('name&20140404-105421')
+#             >>> imprint.time > (2013,)
+#             True
+#             >>> imprint.time > (2015,)
+#             False
+#         """
 
+#         if not self._time:
 
-class Version(Group):
-    pass
+#             date = self.path.option
+#             year = int(date[:4])
+#             month = int(date[4:6])
+#             day = int(date[6:8])
 
+#             time = date.rsplit("-")[-1]
+#             hour = int(time[:2])
+#             minute = int(time[2:4])
+#             second = int(time[4:])
 
-class Imprint(Group):
-    def __init__(self, *args, **kwargs):
-        super(Imprint, self).__init__(*args, **kwargs)
-        self._time = None
+#             self._time = (year, month, day, hour, minute, second)
 
-    @property
-    def time(self):
-        """
-        Return tuple of recorded time.
-
-        Example
-            >>> imprint = Imprint('name&20140404-105421')
-            >>> imprint.time > (2013,)
-            True
-            >>> imprint.time > (2015,)
-            False
-        """
-
-        if not self._time:
-
-            date = self.path.option
-            year = int(date[:4])
-            month = int(date[4:6])
-            day = int(date[6:8])
-
-            time = date.rsplit("-")[-1]
-            hour = int(time[:2])
-            minute = int(time[2:4])
-            second = int(time[4:])
-
-            self._time = (year, month, day, hour, minute, second)
-
-        return self._time
+#         return self._time
 
 
 _python_to_string = {
@@ -575,45 +514,45 @@ if __name__ == '__main__':
     location = om.Location(r'C:\Users\marcus\om2')
 
     # # Add a regular string
-    # ostring = om.Dataset('simple_data.string', data='whop', parent=location)
-    # ostring = om.Dataset('test', data=False, parent=location)
-    ostring = om.Dataset('test', data=None, parent=location)
+    # ostring = om.Dataset('simple_data.string', value='whop', parent=location)
+    # ostring = om.Dataset('test', value=False, parent=location)
+    ostring = om.Dataset('test', value=None, parent=location)
     print ostring.path
-    new_path = ostring.relativepath.copy(suffix='null')
+    new_path = ostring.rawpath.copy(suffix='null')
     # print ostring.copy(path=new_path).path
-    # print ostring.data
-    # ostring.data = 5
-    # print ostring.data
+    # print ostring.value
+    # ostring.value = 5
+    # print ostring.value
     # print ostring.dump()
     # print om.exists(ostring)
     # print ostring.path
 
     # # Add text
     # text = om.Dataset('story.text', parent=location)
-    # text.data = 'There once was a boy'
+    # text.value = 'There once was a boy'
 
     # # Add a list
     # olist = om.Group('mylist.list', parent=location)
 
     # # Containing three datasets..
-    # l1 = om.Dataset(path='item1', data='a string value', parent=olist)
-    # l2 = om.Dataset(path='item2', data=True, parent=olist)
-    # l3 = om.Dataset(path='item3', data=5, parent=olist)
+    # l1 = om.Dataset(path='item1', value='a string value', parent=olist)
+    # l2 = om.Dataset(path='item2', value=True, parent=olist)
+    # l3 = om.Dataset(path='item3', value=5, parent=olist)
 
     # om.ls(olist)
     # # ..and a dictionary..
     # odict = om.Group(path='mydict.dict', parent=olist)
 
     # # ..with tree keys
-    # key1 = om.Dataset('key1.string', data='value', parent=odict)
+    # key1 = om.Dataset('key1.string', value='value', parent=odict)
 
-    # # One of which, we neglect to specify a data-type.
-    # # The data-type will be determined via the Python data-type <str>
-    # key2 = om.Dataset('key2', data=True, parent=odict)
+    # # One of which, we neglect to specify a value-type.
+    # # The value-type will be determined via the Python value-type <str>
+    # key2 = om.Dataset('key2', value=True, parent=odict)
     # print key2.path.suffix
 
     # text = om.Dataset('story.text', parent=odict)
-    # text.data = 'There once was a boy'
+    # text.value = 'There once was a boy'
     # print repr(odict['story'])
 
     # print text.path
@@ -632,13 +571,13 @@ if __name__ == '__main__':
 
     # obool = mylist._children.get('item2')
     # om.pull(obool)
-    # print repr(obool.data)
+    # print repr(obool.value)
 
-    # print mylist.data
+    # print mylist.value
 
     # simple = location._children.get('simple_data')
     # om.pull(simple)
-    # print simple.data
+    # print simple.value
     # # print simple.path
 
     # print om.read(r'c:\users\marcus\om2', 'simple_data')
@@ -647,8 +586,8 @@ if __name__ == '__main__':
 
     # location = om.Location(r'c:\users\marcus\om2')
     # dataset = om.Dataset('suffixless', parent=location)
-    # dataset.data = 3.0
-    # dataset.data = 'hello'
+    # dataset.value = 3.0
+    # dataset.value = 'hello'
     # print dataset.type
     # print dataset.suffix
     # print dataset.path
@@ -661,8 +600,8 @@ if __name__ == '__main__':
     # print om.listdir(path)
     # om.pull(child)
     # print type(child)
-    # print child.data
-    # print type(child.data)
+    # print child.value
+    # print type(child.value)
 
     # print string_to_python('bool')
 
@@ -677,13 +616,13 @@ if __name__ == '__main__':
     # print om.read(path, 'female')
 
     # for node in om.read(path):
-    #     data = om.read(path, node.name)
-    #     print "%s = %s <'%s'>" % (node.name, data, type(data).__name__)
+    #     value = om.read(path, node.name)
+    #     print "%s = %s <'%s'>" % (node.name, value, type(value).__name__)
 
     # print om.read(path)
     # assert not om.exists(dataset)
-    # dataset.data = True
-    # # dataset.data = 'string'
+    # dataset.value = True
+    # # dataset.value = 'string'
     # print dataset.path
     # # print dataset.type
     # print dataset.suffix
