@@ -11,7 +11,7 @@ Description
 Functionality
 
     Main
-    ----
+    ----------------------
 
     dump            -- Write to database
     pull            -- Read from database
@@ -19,7 +19,7 @@ Functionality
     find            -- Return generator of matches
 
     Temporal
-    --------
+    ----------------------
 
     history         -- Return generator of available history
     restore         -- Restore from history
@@ -28,7 +28,7 @@ Functionality
     versions        -- Return generator of available versions
 
     Convenience
-    -----------
+    ----------------------
 
     read            -- Convenience method for reading metadata
     write           -- Convenience method for writing metadata
