@@ -23,7 +23,7 @@ There for you when..
 * ..space is cheap
 * ..control outweighs performance
 
-> Open Metadata is in early development (current version `0.3`) but below is what it can do for you today.
+> Open Metadata is in early development (current version `0.4`) but below is what it can do for you today.
 
 #### Non-destructive
 
@@ -61,11 +61,13 @@ Download a [release][], unpack into site-packages.
 
 # Specifications
 
+The Open Metadata technology is designed to organize, store, discover, access, analyze, share, and preserve diverse, complex data in continuously evolving heterogeneous computing and storage environments.
+
 Open Metadata is LGPLv3 licensed software built upon the following open-source specifications:
 
 * [General Introduction](http://rfc.abstractfactory.io/spec/10)
 * [Temporal Open Metadata](http://rfc.abstractfactory.io/spec/14)
-* [Object-Oriented Metadata](http://rfc.abstractfactory.io/spec/12)
+* [Cascading Metadata](http://rfc.abstractfactory.io/spec/12)
 * [Zero Open Metadata](http://rfc.abstractfactory.io/spec/13)
 * [Meta Metadata](http://rfc.abstractfactory.io/spec/15)
 * [Metadata Types](http://rfc.abstractfactory.io/spec/18)
