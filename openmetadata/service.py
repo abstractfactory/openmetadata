@@ -5,12 +5,22 @@ import time
 import shutil
 import __builtin__
 
+from openmetadata import error
+
 SEP = os.sep
 OSNAME = os.name
 
 
 def isabsolute(path):
     return os.path.isabs(path)
+
+
+def isdir(path):
+    return os.path.isdir(path)
+
+
+def isfile(path):
+    return os.path.isfile(path)
 
 
 def currenttime():
@@ -96,7 +106,7 @@ def push():
 def ls(path):
     """Retrieve remotely-stored data"""
     if not os.path.exists(path):
-        raise ValueError(path)
+        raise error.Exists(path)
     for _, dirs, files in os.walk(path):
         return dirs, files
 

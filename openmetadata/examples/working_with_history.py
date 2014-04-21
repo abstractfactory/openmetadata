@@ -4,6 +4,8 @@ This module provides examples for working with history
 
 """
 
+raise NotImplementedError
+
 import os
 import time
 import openmetadata as om
@@ -26,7 +28,7 @@ assert om.read(path, 'girlfriend') == 'Sandra Bullock'
 
 # To get the history, we must first get an
 # instance of the Dataset 'girlfriend'
-dataset = om.read(path, 'girlfriend', native=False)
+dataset = om.read(path, 'girlfriend', convert=False)
 imprint = next(om.history(dataset))
 om.restore(imprint, removehistory=False)
 
