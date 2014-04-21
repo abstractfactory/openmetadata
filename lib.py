@@ -77,7 +77,7 @@ class Node(object):
 
     def __eq__(self, other):
         """
-        Variables within a parent MUST all have unique names.
+        Entrys within a parent MUST all have unique names.
         If a name is not unique, there is a bug.
 
         """
@@ -242,10 +242,10 @@ class Node(object):
 
     @property
     def iscollection(self):
-        """`self` contains one or more variables
+        """`self` contains one or more entrys
 
         Description
-            A Variable containing other variables is referred
+            A Entry containing other entrys is referred
             to as a collection; on a file-system, a collection
             represents a folder. Non-collections are then files.
 
@@ -317,7 +317,7 @@ class Location(Node):
         return True
 
 
-class Variable(Node):
+class Entry(Node):
     """
      ____
     |____|______
@@ -331,16 +331,16 @@ class Variable(Node):
         (an identifier) which contains some known or unknown
         quantity or information, a value.
 
-        On disk, a variable is both a file and a folder; depe-
+        On disk, a entry is both a file and a folder; depe-
         nding on its value. E.g. a list if a folder, bool is a file.
 
     Reference
-        http://en.wikipedia.org/wiki/Variable_(computer_science)
+        http://en.wikipedia.org/wiki/Entry_(computer_science)
 
     """
 
     def __init__(self, *args, **kwargs):
-        super(Variable, self).__init__(*args, **kwargs)
+        super(Entry, self).__init__(*args, **kwargs)
 
         if len(args) > 1:
             self.value = args[1]
@@ -349,7 +349,7 @@ class Variable(Node):
 
     @property
     def value(self):
-        return super(Variable, self).value
+        return super(Entry, self).value
 
     @value.setter
     def value(self, value):
@@ -371,14 +371,14 @@ class Variable(Node):
 
             index = 0
             for child in value:
-                Variable(str(index), value=child, parent=self)
+                Entry(str(index), value=child, parent=self)
                 index += 1
 
         elif isinstance(value, dict):
             self._value = {}
 
             for key, value in value.iteritems():
-                Variable(key, value=value, parent=self)
+                Entry(key, value=value, parent=self)
 
         else:
             assert json.dumps(value)

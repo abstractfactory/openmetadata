@@ -2,7 +2,7 @@
 
 Associate metadata with folders on your file-system.
 
-```python
+```python 
 # Simplest use-case
 >>> import openmetadata as om
 >>> om.write('/home/marcus', 'description', 'Creator of Open Metadata')

@@ -16,7 +16,8 @@ Functionality
     dump            -- Write to database
     pull            -- Read from database
     remove          -- Remove from database
-    find            -- Return generator of matches
+    find            -- Return first match
+    find_all        -- Return generator of matches
 
     Temporal
     ----------------------
@@ -60,12 +61,12 @@ log = logging.getLogger('openmetadata.api')
 """
 
 Location    -- Path to which metadata is associated
-Variable    -- Dynamically typed metadata variable
+Entry    -- Dynamically typed metadata entry
 
 """
 
 Location = lib.Location
-Variable = lib.Variable
+Entry = lib.Entry
 
 
 # Core Functionality
@@ -106,7 +107,7 @@ def dump(node, track_history=True, simulate=False):
 
         service.dump(path, value)
 
-        log.info("_dump(): Successfully dumped: %r" % path)
+        log.info("dump(): Successfully dumped: %r" % path)
 
     return node
 
@@ -121,23 +122,16 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
 
     """
 
-    path = node.path.as_str
-    if not service.exists(path):
-        # If the name of `node` has been entered manually, chances
-        # are that the suffix does not match an existing node on disk.
-        # If so, find a matching name, under any suffix, and assume
-        # this is the one the user intended to pull from.
-        name = node.path.name
-        parent = node.path.parent
-        similar = None
+    path = node.path
+    if not service.exists(path.as_str):
+        """
+        If the name of `node` has been entered manually, chances
+        are that there is an existing node on disk under a different
+        suffix. If so, find a matching name, under any suffix,
+        and assume this is the one the user intended to pull from.
 
-        try:
-            found = find(parent.as_str, name)
-            similar = next(found)
-        except StopIteration:
-            # No similar names could be found, it simply
-            # does not exist. Sorry.
-            pass
+        """
+        similar = util.find(path.parent.as_str, path.name)
 
         if similar:
             node._path = node.raw_path.copy(path=similar)
@@ -146,8 +140,8 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
                         depth=depth,
                         merge=merge,
                         _currentlevel=_currentlevel)
-
-        raise error.Exists("%s does not exist" % path)
+        else:
+            raise error.Exists("%s does not exist" % path)
 
     if lazy and node.hasvalue:
         return node
@@ -155,14 +149,14 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
     if not merge:
         node.clear()
 
+    path = path.as_str
     if service.isdir(path):
         dirs, files = service.ls(path)
-        for variable in dirs + files:
-            Variable(variable, parent=node)
-            variable = {}
+        for entry in dirs + files:
+            var = Entry(entry, parent=node)
+            var.iscollection = True
     else:
-        # service.open(path)
-        value = service.open(node.path.as_str)
+        value = service.open(path)
         node.load(value)
 
     # Continue pulling children until `depth` is reached
@@ -176,42 +170,6 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
                      _currentlevel=_currentlevel + 1)
 
     return node
-
-
-def find(path, name):
-    """Find `name` in `path`, regardless of suffix
-
-    Return relative path to found variable
-
-    Example
-        Given the directory:
-
-        parent
-        |-- variable1.list
-        |-- variable2.int
-        |-- variable3.bool
-
-        >> find(path, 'variable3')
-        'variable3.bool'
-
-    """
-    try:
-        dirs_, files_ = service.ls(path)
-    except error.Exists:
-        return
-
-    for variable in dirs_ + files_:
-
-        if variable.startswith('.'):
-            variable_no_suffix = variable
-        else:
-            try:
-                variable_no_suffix, _ = variable.rsplit(lib.Path.EXT, 1)
-            except ValueError:
-                variable_no_suffix = variable
-
-        if variable_no_suffix == name:
-            yield variable
 
 
 def remove(node, permanent=False):
@@ -235,7 +193,7 @@ def trash(node):
 
     # Ensure node.path.name is unique in trash_path, as per RFC14
     if service.exists(trash_path.as_str):
-        for match in find(trash_path.as_str, node.path.name):
+        for match in util.find_all(trash_path.as_str, node.path.name):
             match_path = trash_path + match
             service.remove(match_path.as_str)
 
@@ -269,7 +227,11 @@ def restore(node):
 
 
 def _make_history(node):
+    """Store value of `node` as-is on disk in history"""
     assert service.isfile(node.path.as_str), node.path
+
+    # We'll be pulling data into a copy, rather than the
+    # original, so as to avoid overwriting any existing value.
     copy = node.copy()
 
     try:
@@ -283,7 +245,7 @@ def _make_history(node):
     except StopIteration:
         return
 
-    # Gather old value
+    # Prepare name of `imprint` (see RFC12)
     name = node.path.name
     imprint_time = service.currenttime()
     imprint_name = "{name}{sep}{time}".format(name=name,
@@ -294,11 +256,11 @@ def _make_history(node):
     old_value = pull(copy).value
 
     # Construct history group
-    history = Variable('.history', parent=parent)
-    imprint = Variable(imprint_name, parent=history)
+    history = Entry('.history', parent=parent)
+    imprint = Entry(imprint_name, parent=history)
 
-    Variable('user.string', value='marcus', parent=imprint)
-    Variable('value', value=old_value, parent=imprint)
+    Entry('user.string', value='marcus', parent=imprint)
+    Entry('value', value=old_value, parent=imprint)
 
     dump(history, track_history=False)
 
@@ -333,15 +295,26 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
 
     """
 
-    parent = node.location.path
+    parent = node.location.raw_path
     metapath = node.path.meta
+
+    # Temporary, in preparation for MRO and Bases
+    # implementations.
+    while node.mro:
+        node.mro.pop()
+
+    for location in util.locations(parent):
+        node.mro.append(location)
+    # /End temporary.
 
     tree = []
     level = 1
     while parent:
-        variable = read(parent.as_str, metapath, convert=False)
-        if variable:
-            tree.append(variable)
+
+        if pull:
+            entry = read(parent.as_str, metapath, convert=False)
+            if entry:
+                tree.append(entry)
 
         if depth and level > depth:
             break
@@ -355,6 +328,10 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
     if not merge:
         node.clear()
 
+    # Assign inherited metadata in the order
+    # they naturally override each other.
+    # Overridden values will silently retreat
+    # back into the depths from which they came.
     for entry in tree:
         #  ___
         # |___|___
@@ -370,8 +347,8 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
         #  Add child to node
         #
         if isinstance(entry, list):
-            for variable in entry:
-                node.add(variable)
+            for entry in entry:
+                node.add(entry)
         else:
             #  ___
             # |___|___
@@ -464,11 +441,11 @@ def read(path, metapath=None, convert=True):
 
     else:
         # Return value as-is, meaning Open Metadata
-        # `Variable` and `Location` objects.
+        # `Entry` and `Location` objects.
 
         if root.iscollection:
             # Output
-            #   --> [Variable('child'), Variable('anotherchild')]
+            #   --> [Entry('child'), Entry('anotherchild')]
             value = root.value
             if value:
                 assert isinstance(value, dict)
@@ -476,7 +453,7 @@ def read(path, metapath=None, convert=True):
 
         else:
             # Output
-            #   --> Variable('child')
+            #   --> Entry('child')
 
             return root
 
@@ -487,19 +464,15 @@ def write(path, metapath, value=None):
     parts = util.parse_metapath(metapath)
 
     root = location
-    variables = parts
-    for variable_name in variables:
+    entries = parts
+    for entry_name in entries:
         # As each predecessor is manually specified, there is
         # a chance that a collection of existing/different
         # suffix already exists. If so, use that.
-        try:
-            found = find(root.path.as_str, variable_name)
-            variable_name = next(found)
-        except StopIteration:
-            pass
+        entry_name = util.find(root.path.as_str, entry_name) or entry_name
 
-        variable = Variable(variable_name, parent=root)
-        root = variable
+        entry = Entry(entry_name, parent=root)
+        root = entry
 
     root.value = value
 
@@ -521,15 +494,20 @@ def islocation(node):
     return isinstance(node, lib.Location)
 
 
-def isvariable(node):
-    return isinstance(node, lib.Variable)
+def isentry(node):
+    return isinstance(node, lib.Entry)
+
+
+# Include utilities
+find = util.find
+find_all = util.find_all
 
 
 __all__ = [
     # Main objects
     'Location',
     # 'Node',
-    'Variable',
+    'Entry',
 
     # Main functionality
     'dump',
@@ -538,13 +516,15 @@ __all__ = [
     'pull',
     'remove',
     'clear',
+    'find',
+    'find_all',
     # 'exists',
     # 'existing',
     'inherit',
     'history',
     'restore',
     'islocation',
-    'isvariable'
+    'isentry'
 ]
 
 

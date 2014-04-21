@@ -1,15 +1,17 @@
 # 0.5
 
-1. Unification of `Group` and `Dataset` into `Variable`
+An *Epic Eureka Moment (tm)* release
+
+1. Unification of `Group` and `Dataset` into `Entry`
 2. New `Path` object
-3. Ineritance, om.inherit
+3. Ineritance
 4. Type-changes maintained in history
 
-### Unification into `Variable`
+### Unification into `Entry`
 
-This has been an amazing discovery! No more is there a need to separate between what is a "folder" or what is a "file". A Variable may contain any data and if said data is more appropriately stored on a file-system as a folder, then a folder it will become. To the user, it makes little difference.
+This has been an amazing discovery! No more is there a need to separate between what is a "folder" or what is a "file". A Entry may contain any data and if said data is more appropriately stored on a file-system as a folder, then a folder it will become. To the user, it makes little difference.
 
-This is in relation to the common notion of "variables" in dynamic programming languages, such as Python:
+This is in relation to the common notion of "entrys" in dynamic programming languages, such as Python:
 
 ```python
 # `my_var` is of type <int> here
@@ -26,7 +28,7 @@ So, the equivalent in Open Metadata syntax:
 
 ```python
 >>> location = om.Location('/home/marcus')
->>> my_var = om.Variable('my_var', parent=location)
+>>> my_var = om.Entry('my_var', parent=location)
 >>> my_var.value = 5
 >>> my_var.value = ['string']
 >>> om.dump(my_var)
@@ -40,6 +42,19 @@ Fetching the path from any node now gives you an object with proper OS facilitie
 ### Ineritance
 
 This is another amazing discovery. You can use it as an alternative to om.pull, it will behave just as such, only it will also pull from parents and parents parents; in effect "inheriting" from above hierarchy.
+
+### Type-changes maintained in history
+
+Prior to 0.5, altering the type of a Dataset would break any prior history to said Dataset.
+
+```python
+om.write(path, 'my_age', 5)
+om.write(path, 'my_age', 6.0)
+```
+
+Here, history would not be maintained between the two different types (int, and float).
+
+Now it does, it preserves the type too so that you get back both value and type when restoring from history.
 
 # 0.4
 

@@ -64,7 +64,7 @@ def storing_collection_as_blobs():
 
     path = '/project/asset'
     location = om.Location(path)
-    myvalue = om.Variable('myvalue', parent=location)
+    myvalue = om.Entry('myvalue', parent=location)
     myvalue.value = '/path/to/myvalue.json'
     myvalue.isblob = True
     om.dump(myvalue)
@@ -106,7 +106,7 @@ def storing_collection_as_open_metadata():
     raise NotImplementedError
 
     location = om.Location(path)
-    myvalue = om.Variable('myvalue', parent=location)
+    myvalue = om.Entry('myvalue', parent=location)
     myvalue.value = ['entry1', 'entry2']
     om.dump(myvalue)
 
