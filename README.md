@@ -1,9 +1,8 @@
-<!-- ![](https://dl.dropbox.com/s/f756p54ermi9wto/openmetadata_black_small_rgb_aw1.png) -->
 ![](https://dl.dropbox.com/s/frgz506hx49i9rt/openmetadata_black_med_rgb_aw1.png)
 
 Associate metadata with folders on your file-system.
 
-```python
+```python 
 # Simplest use-case
 >>> import openmetadata as om
 >>> om.write('/home/marcus', 'description', 'Creator of Open Metadata')
@@ -21,7 +20,7 @@ There for you when..
 * ..space is cheap
 * ..control outweighs performance
 
-> Open Metadata is in early development (current version `0.3`) but below is what it can do for you today.
+> Open Metadata is in early development (current version `0.4`) but below is what it can do for you today.
 
 #### Non-destructive
 
@@ -59,11 +58,13 @@ Download a [release][], unpack into site-packages.
 
 # Specifications
 
+The Open Metadata technology is designed to organize, store, discover, access, analyze, share, and preserve diverse, complex data in continuously evolving heterogeneous computing and storage environments.
+
 Open Metadata is LGPLv3 licensed software built upon the following open-source specifications:
 
 * [General Introduction](http://rfc.abstractfactory.io/spec/10)
 * [Temporal Open Metadata](http://rfc.abstractfactory.io/spec/14)
-* [Object-Oriented Metadata](http://rfc.abstractfactory.io/spec/12)
+* [Cascading Metadata](http://rfc.abstractfactory.io/spec/12)
 * [Zero Open Metadata](http://rfc.abstractfactory.io/spec/13)
 * [Meta Metadata](http://rfc.abstractfactory.io/spec/15)
 * [Metadata Types](http://rfc.abstractfactory.io/spec/18)
@@ -86,6 +87,11 @@ In a data-oriented architecture, data controls the flow of information, not your
 This way, implementers can design their software by means of placing content, in a hierarchy for instance, that governs what actions the software may take in which order.
 
 Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an stateful, intelligent unit capable of making desicions; this is what I call programmable content.
+
+# Usergroup
+
+We're all having a good time, here, join us
+https://groups.google.com/forum/#!forum/open-metadata
 
 [RFC13]: http://rfc.abstractfactory.io/spec/13
 [release]: https://github.com/abstractfactory/openmetadata/releases
