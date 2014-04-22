@@ -9,7 +9,7 @@ import openmetadata as om
 om.setup_log()
 
 # Starting-point
-path = os.path.expanduser(r'~')
+path = os.path.expanduser(r'~/om')
 om.clear(path)
 
 location = om.Location(path)

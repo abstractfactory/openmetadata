@@ -13,7 +13,7 @@ import openmetadata as om
 om.setup_log('openmetadata')
 
 # Starting-point
-path = os.path.expanduser(r'~')
+path = os.path.expanduser(r'~/om')
 
 om.write(path, 'status', True)
 om.write(path, 'story', 'There once was a boy')
@@ -44,3 +44,5 @@ om.write(path, '/root/group/amazing', True)
 assert om.read(path, '/root/group/amazing') is True
 assert om.read(path, '/status') is True
 assert om.read(path, '/age') == 27
+
+om.remove(om.Location(path))

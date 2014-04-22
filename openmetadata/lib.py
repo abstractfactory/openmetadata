@@ -2,10 +2,9 @@ import abc
 import json
 import logging
 
-from openmetadata import service
-from openmetadata import error
 from openmetadata import path
-# from openmetadata import bug
+from openmetadata import error
+from openmetadata import service
 
 HISTORY = '.history'
 VERSIONS = '.versions'
@@ -431,41 +430,6 @@ class Entry(Node):
 #             self._time = (year, month, day, hour, minute, second)
 
 #         return self._time
-
-
-# type_to_suffix = {
-#     bool:       'bool',
-#     int:        'int',
-#     float:      'float',
-#     str:        'string',
-#     unicode:    'string',
-#     None:       'null',
-#     tuple:      'tuple',
-#     list:       'list',
-#     dict:       'dict'
-# }
-
-
-# def python_to_string(obj):
-#     if obj is type(None):
-#         obj = None
-
-#     string = type_to_suffix.get(obj)
-#     if not string:
-#         raise ValueError("Unrecognised Python datatype: %r" % obj)
-#     return string
-
-
-# def string_to_python(obj):
-#     _map = dict((v, k) for (k, v) in type_to_suffix.items())
-#     return _map.get(obj)
-
-
-"""
-
-Factories
-
-"""
 
 
 defaults = {

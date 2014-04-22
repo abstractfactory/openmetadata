@@ -10,7 +10,7 @@ import os
 import openmetadata as om
 
 # Starting-point
-path = os.path.expanduser(r'~')
+path = os.path.expanduser(r'~/om')
 
 location = om.Location(path)
 

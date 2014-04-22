@@ -12,7 +12,7 @@ import openmetadata as om
 om.setup_log()
 
 # Starting-point
-path = os.path.expanduser(r'~')
+path = os.path.expanduser(r'~/om')
 
 # Add and modify data, with 1.2 seconds inbetween changes.
 # *note: History is stored in seconds. Any changes occuring within

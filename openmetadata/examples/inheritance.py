@@ -3,7 +3,7 @@ import os
 import openmetadata as om
 # om.setup_log()
 
-level1 = os.path.expanduser('~')
+level1 = os.path.expanduser(r'~/om')
 level2 = os.path.join(level1, 'level2')
 level3 = os.path.join(level2, 'level3')
 

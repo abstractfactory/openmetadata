@@ -6,7 +6,12 @@ Open Metadata API
 -----------------------------------------------------------------------
 
 Description
-    pass
+    The Open Metadata technology is designed to organize, store,
+    discover, access, analyze, share, and preserve diverse, complex
+    data in continuously evolving heterogeneous computing and
+    storage environments.
+
+    Open Metadata is LGPLv3 licensed software
 
 Functionality
 
@@ -14,19 +19,10 @@ Functionality
     ----------------------
 
     dump            -- Write to database
-    pull            -- Read from database
     remove          -- Remove from database
     find            -- Return first match
-    find_all        -- Return generator of matches
-
-    Temporal
-    ----------------------
-
-    history         -- Return generator of available history
-    restore         -- Restore from history
-    save            -- Saves as new version
-    version         -- Retrieves saved version
-    versions        -- Return generator of available versions
+    pull            -- Read from database
+    inherit         -- Read cascading from database
 
     Convenience
     ----------------------
@@ -60,16 +56,23 @@ log = logging.getLogger('openmetadata.api')
 
 """
 
+Node        -- Superclass to every other object in OM
 Location    -- Path to which metadata is associated
-Entry    -- Dynamically typed metadata entry
+Entry       -- Dynamically typed metadata entry
 
 """
 
+Node = lib.Node
 Location = lib.Location
 Entry = lib.Entry
 
 
+# ---------------------------------------------------------------------
+#
 # Core Functionality
+# http://rfc.abstractfactory.io/spec/10
+#
+# ---------------------------------------------------------------------
 
 
 def commit(node):
@@ -209,15 +212,6 @@ def trash(node):
     log.info("remove(): Successfully removed %r" % node.path.as_str)
 
 
-# def exists(node):
-#     """Check if `node` exists under any suffix"""
-#     return node.path.name in existing(node)
-
-
-# def existing(node):
-#     pass
-
-
 def history(node):
     pass
 
@@ -270,8 +264,8 @@ def _make_history(node):
 
 # ---------------------------------------------------------------------
 #
-# Object-oriented Metadata, RFC12
-# http://rfc.abstractfactory.io/spec/12/
+# Cascading Metadata, RFC12
+# http://rfc.abstractfactory.io/spec/12
 #
 # ---------------------------------------------------------------------
 
@@ -505,8 +499,8 @@ find_all = util.find_all
 
 __all__ = [
     # Main objects
+    'Node',
     'Location',
-    # 'Node',
     'Entry',
 
     # Main functionality
@@ -517,12 +511,12 @@ __all__ = [
     'remove',
     'clear',
     'find',
-    'find_all',
+    # 'find_all',
     # 'exists',
     # 'existing',
     'inherit',
-    'history',
-    'restore',
+    # 'history',
+    # 'restore',
     'islocation',
     'isentry'
 ]
