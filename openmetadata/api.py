@@ -172,6 +172,7 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
                      merge=merge,
                      _currentlevel=_currentlevel + 1)
 
+    node.isdirty = False
     return node
 
 
@@ -187,6 +188,17 @@ def remove(node, permanent=False):
         log.info("remote(): Permanently removed %r" % node.path.as_str)
     else:
         trash(node)
+
+    # Remove `node` from parent
+    # parent = None
+    # try:
+    #     parent = next(node.parent)
+    # except StopIteration:
+    #     pass
+
+    # if parent:
+    #     parent.remove(node.path.name)
+    #     log.info("Removing %s from %s" % (node, parent))
 
     return True
 
@@ -352,6 +364,7 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
             #
             node.value = entry.value
 
+    node.isdirty = False
     return node
 
 

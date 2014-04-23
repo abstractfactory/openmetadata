@@ -101,6 +101,7 @@ class Node(object):
         self._value = value
         self._parent = []
         self._iscollection = None
+        self.isdirty = False
         self._mro = [self]
 
         if parent:
@@ -223,7 +224,10 @@ class Node(object):
     @property
     def value(self):
         if self._value is None:
-            return defaults.get(self.type)
+            default = defaults.get(self.type)
+            if hasattr(default, '__call__'):
+                default = default()
+            return default
         return self._value
 
     @value.setter
