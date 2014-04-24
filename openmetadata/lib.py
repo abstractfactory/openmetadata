@@ -60,6 +60,8 @@ class Node(object):
         try:
             if not self.iscollection:
                 raise KeyError
+            if self._value is None:
+                raise KeyError
             return self._value[item]
 
         except KeyError:
@@ -312,8 +314,12 @@ class Location(Node):
         raise NotImplementedError
 
     @property
-    def haschildren(self):
+    def iscollection(self):
         return True
+
+    # @property
+    # def haschildren(self):
+    #     return True
 
     @property
     def hasparent(self):

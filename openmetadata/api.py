@@ -410,6 +410,7 @@ def read(path, metapath=None, convert=True):
             name, suffix = current, None
 
         try:
+            print "Getting %r from %r" % (name, root)
             root = root[name]
 
             # If metapath included a suffix,
