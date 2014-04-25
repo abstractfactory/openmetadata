@@ -70,7 +70,7 @@ The implementation you are reading about right now is LGPLv3 licensed software, 
 * [RFC19][]: Storage Agnostic
 * [RFC20][]: Referencing
 * [RFC35][]: Garbage Collection
-* [RFC41][]: Temporal Resolution
+* [RFC41][]: Driver
 * [RFC46][]: Temporal Resolution
 
 # FAQ
