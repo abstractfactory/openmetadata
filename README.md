@@ -12,9 +12,7 @@ Creator of Open Metadata
 
 For more, head over to [/examples][]
 
-# Install
-
-You may install via `pip`, this is the recommend method.
+# Installing with `pip`
 
 ```bash
 $ pip install git+git://github.com/abstractfactory/openmetadata.git
@@ -34,8 +32,6 @@ There for you when..
 * ..change is common
 * ..space is cheap
 * ..control outweighs performance
-
-> Open Metadata is in early development (current version `0.4`) but below is what it can do for you today.
 
 #### Non-destructive
 
@@ -61,7 +57,7 @@ There are no mysteries about the inner-workings of the data that you write; you 
 
 The Open Metadata technology is designed to organize, store, discover, access, analyze, share, and preserve diverse, complex data in continuously evolving heterogeneous computing and storage environments.
 
-Open Metadata is LGPLv3 licensed software built upon the following open-source specifications:
+The implementation you are reading about right now is LGPLv3 licensed software, however Open Metadata itself is language- and implementation-agnostic, built upon the following open-source specifications:
 
 * [RFC10][]: Main Specification
 * [RFC12][]: Cascading
