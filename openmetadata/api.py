@@ -1,44 +1,5 @@
 """
------------------------------------------------------------------------
-
-Open Metadata API
-
------------------------------------------------------------------------
-
-Description
-    The Open Metadata technology is designed to organize, store,
-    discover, access, analyze, share, and preserve diverse, complex
-    data in continuously evolving heterogeneous computing and
-    storage environments.
-
-    Open Metadata is LGPLv3 licensed software
-
-Functionality
-
-    Main
-    ----------------------
-
-    dump            -- Write to database
-    remove          -- Remove from database
-    find            -- Return first match
-    pull            -- Read from database
-    inherit         -- Read cascading from database
-
-    Convenience
-    ----------------------
-
-    read            -- Convenience method for reading metadata
-    write           -- Convenience method for writing metadata
-    ls              -- List metacontent of node
-
-Note
-    This module isn't to be used directly, all funcionality is
-    imported by the __init__.py of 'openmetadata' and retreivable
-    via the package directly.
-
-    Example
-        >> import openmetadata as om
-        >> om.read('/home/marcus')
+See help(openmetadata) for more information
 
 """
 
