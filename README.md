@@ -14,10 +14,22 @@ True
 
 For more, head over to [/examples][]
 
-### Installing with `pip`
+### Installing with `pip` and `git`
+
+* Requires that you have `git` installed.
 
 ```bash
-$ pip install git+git://github.com/abstractfactory/openmetadata.git
+$ pip install git+git://github.com/abstractfactory/openmetadata.git@v0.5.1
+```
+
+### Installing with `release`
+
+1. Download a [release][]
+2. Unpack
+
+```bash
+# 3. Install
+$ python setup.py
 ```
 
 ### Features
