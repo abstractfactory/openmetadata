@@ -33,7 +33,7 @@ def why_simple_data():
     location = om.Location(path)
     girlfriend = om.Dataset('girlfriend', parent=location)
     girlfriend.value = 'Sweet Heartsson'
-    om.dump(girlfriend)
+    om.flush(girlfriend)
     om.clear(path)
 
 
@@ -67,7 +67,7 @@ def storing_collection_as_blobs():
     myvalue = om.Entry('myvalue', parent=location)
     myvalue.value = '/path/to/myvalue.json'
     myvalue.isblob = True
-    om.dump(myvalue)
+    om.flush(myvalue)
 
     # Retreiving stored blob
     myvalue = om.read(path, 'myvalue')
@@ -108,7 +108,7 @@ def storing_collection_as_open_metadata():
     location = om.Location(path)
     myvalue = om.Entry('myvalue', parent=location)
     myvalue.value = ['entry1', 'entry2']
-    om.dump(myvalue)
+    om.flush(myvalue)
 
     # Retreiving stored blob
     myvalue = om.read(path, 'myvalue')

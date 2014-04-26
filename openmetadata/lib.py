@@ -310,7 +310,7 @@ class Location(Node):
     def parent(self):
         yield Location(self._path.parent)
 
-    def dump(self):
+    def flush(self):
         raise NotImplementedError
 
     @property

@@ -38,7 +38,7 @@ key1 = om.Entry('key1.string', value='value', parent=odict)
 key2 = om.Entry('key2', value='value', parent=odict)
 
 # Finally, write it to disk.
-om.dump(location)
+om.flush(location)
 
 # ----------- Read it back in
 

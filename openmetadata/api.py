@@ -44,20 +44,20 @@ def push():
     pass
 
 
-def dump(node, track_history=True, simulate=False):
+def flush(node, track_history=True, simulate=False):
     assert isinstance(node, lib.Node)
 
     if node.iscollection:
         path = node.path.as_str
 
-        service.dump_dir(path)
+        service.flush_dir(path)
 
         for child in node:
-            dump(child, track_history, simulate)
+            flush(child, track_history, simulate)
 
     else:
         if not node.type:
-            log.warning("Cannot dump %r, "
+            log.warning("Cannot flush %r, "
                         "it has no value."
                         % node.path.as_str)
             return node
@@ -69,9 +69,9 @@ def dump(node, track_history=True, simulate=False):
             if service.exists(path):
                 _make_history(node)
 
-        service.dump(path, value)
+        service.flush(path, value)
 
-        log.info("dump(): Successfully dumped: %r" % path)
+        log.info("flush(): Successfully flushed: %r" % path)
 
     return node
 
@@ -229,7 +229,7 @@ def _make_history(node):
     Entry('user.string', value='marcus', parent=imprint)
     Entry('value', value=old_value, parent=imprint)
 
-    dump(history, track_history=False)
+    flush(history, track_history=False)
 
     log.info("_make_history(): Successfully made history for %s (value=%s)"
              % (copy, copy.value))
@@ -446,7 +446,7 @@ def write(path, metapath, value=None):
 
     assert root.type
 
-    dump(root)
+    flush(root)
 
 
 def clear(path):
@@ -478,7 +478,7 @@ __all__ = [
     'Entry',
 
     # Main functionality
-    'dump',
+    'flush',
     'read',
     'write',
     'pull',

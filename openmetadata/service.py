@@ -100,7 +100,7 @@ def commit(node):
 
 
 def push():
-    """Retrieve commited data and dump it"""
+    """Retrieve commited data and flush it"""
 
 
 def ls(path):
@@ -117,7 +117,7 @@ def open(path):
     return data
 
 
-def dump(path, data):
+def flush(path, data):
     dirname = os.path.dirname(path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -128,7 +128,7 @@ def dump(path, data):
     return True
 
 
-def dump_dir(path):
+def flush_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
     return True

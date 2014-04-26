@@ -6,6 +6,7 @@ An *Epic Eureka Moment (tm)* release
 2. New `Path` object
 3. Ineritance
 4. Type-changes maintained in history
+5. dump() is flush()
 
 ### Unification into `Entry`
 
@@ -55,6 +56,10 @@ om.write(path, 'my_age', 6.0)
 Here, history would not be maintained between the two different types (int, and float).
 
 Now it does, it preserves the type too so that you get back both value and type when restoring from history.
+
+### `dump()` is `flush()`
+
+This is to separate the Entry.dump() from om.flush(), flush performs an I/O operation whereas Entry.dump() serialises data internal to itself. This also conforms to the HDF5 stanard.
 
 # 0.4
 

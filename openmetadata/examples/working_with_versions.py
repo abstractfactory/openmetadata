@@ -19,12 +19,12 @@ password = om.Dataset('password.string', parent=location)
 password.data = 'abcdef'
 
 # Write first occurence of dataset
-om.dump(password)
+om.flush(password)
 
 # Save version and update dataset
 om.save(password)
 password.data = 'Sandra Bullock'
-om.dump(password)
+om.flush(password)
 
 assert om.read(path, 'password') == 'Sandra Bullock'
 

@@ -21,7 +21,7 @@ Functionality
     Main
     ----------------------
 
-    dump            -- Write to database
+    flush           -- Write to database
     remove          -- Remove from database
     find            -- Return first match
     pull            -- Read from database
