@@ -4,28 +4,23 @@ Associate metadata with folders on your file-system.
 
 ```python
 # Simplest use-case
+>>> import os
 >>> import openmetadata as om
->>> om.write('/home/marcus', 'description', 'Creator of Open Metadata')
->>> om.read('/home/marcus', 'description')
-Creator of Open Metadata
+>>> home = os.path.expanduser('~')
+>>> om.write(home, 'isAwesome', True)
+>>> om.read(home, 'isAwesome')
+True
 ```
 
 For more, head over to [/examples][]
 
-# Installing with `pip`
+### Installing with `pip`
 
 ```bash
 $ pip install git+git://github.com/abstractfactory/openmetadata.git
 ```
 
-```python
-# To make sure you've got it, run
->>> import openmetadata as om
->>> print om.version
-'0.5.0'
-```
-
-# Features
+### Features
 
 There for you when..
 
@@ -33,23 +28,23 @@ There for you when..
 * ..space is cheap
 * ..control outweighs performance
 
-#### Non-destructive
+#### `Non-destructive`
 
 Every change you make is maintained in history; facilitating persistent undo/redo, traceable history of who did what and when, including incremental versioning with arbitrary metadata, like a changelog or description. All retrievable at any point in time.
 
-#### Full disclosure
+#### `Full disclosure`
 
 You may at any point in time browse to data at any hierarchical level using your native file-browser; read, write, modify, delete or debug malicious data with tools you know.
 
-#### Partial I/O
+#### `Partial I/O`
 
 As a side-effect to its inherently simplistic design, reading and writing within large sets of data doesn't require reading everything into memory nor does it affect surrounding data; facilitating distributed collaborative editing. See [RFC13][] for more information.
 
-#### No limits on size nor complexity
+#### `No limits on size nor complexity`
 
 Store millions of strings, booleans, matrices.. groups of matrices.. matrices of groups, strings, booleans and vectors. On consumer hardware, in a matter of megabytes, without compression. Then go ahead and store billions.
 
-#### Open specification, open source
+#### `Open specification, open source`
 
 There are no mysteries about the inner-workings of the data that you write; you may write personal tools for debugging, graphical interfaces or extensions to the standard. The specifications are all laid out below and collaboration is welcome. (Want Open Metadata in Lua, Java, PHP or C++?)
 
