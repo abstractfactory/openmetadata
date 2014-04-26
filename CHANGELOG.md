@@ -12,7 +12,7 @@ An *Epic Eureka Moment (tm)* release
 
 This has been an amazing discovery! No more is there a need to separate between what is a "folder" or what is a "file". A Entry may contain any data and if said data is more appropriately stored on a file-system as a folder, then a folder it will become. To the user, it makes little difference.
 
-This is in relation to the common notion of "entrys" in dynamic programming languages, such as Python:
+This is in relation to the common notion of "variables" in dynamic programming languages, such as Python:
 
 ```python
 # `my_var` is of type <int> here
