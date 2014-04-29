@@ -59,7 +59,7 @@ Now it does, it preserves the type too so that you get back both value and type 
 
 ### `dump()` is `flush()`
 
-This is to separate the Entry.dump() from om.flush(), flush performs an I/O operation whereas Entry.dump() serialises data internal to itself. This also conforms to the HDF5 stanard.
+This is to separate the Entry.dump() from om.flush(), flush performs an I/O operation whereas Entry.dump() serialises data internal to itself. This also conforms to the HDF5 standard.
 
 # 0.4
 

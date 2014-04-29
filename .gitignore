@@ -10,3 +10,4 @@ $*
 
 *.sublime-workspace
 
+*.egg-info
