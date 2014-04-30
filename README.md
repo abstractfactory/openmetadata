@@ -1,28 +1,10 @@
 ![](images/title.png)
 
-Associate metadata with folders on your file-system.
+![](https://dl.dropbox.com/s/a3ln6q605fhkflp/basic.png)
 
-```python
-# Simplest use-case
->>> import os
->>> import openmetadata as om
->>> home = os.path.expanduser('~')
->>> om.write(home, 'isAwesome', True)
->>> om.read(home, 'isAwesome')
-True
-```
+*Open Metadata* is a library used in associating metadata to folders on your file-system, designed for cuncurrent, high-performance and scalable digital asset management (DAM) systems.
 
-For more, head over to [/examples][]
-
-### Installing with `pip` and `git`
-
-* Requires that you have `git` installed.
-
-```bash
-$ pip install git+git://github.com/abstractfactory/openmetadata.git@v0.5.1
-```
-
-### Installing with `release`
+### Installing
 
 1. Download a [release][]
 2. Unpack
@@ -40,25 +22,13 @@ There for you when..
 * ..space is cheap
 * ..control outweighs performance
 
-#### `Non-destructive`
-
-Every change you make is maintained in history; facilitating persistent undo/redo, traceable history of who did what and when, including incremental versioning with arbitrary metadata, like a changelog or description. All retrievable at any point in time.
-
-#### `Full disclosure`
-
-You may at any point in time browse to data at any hierarchical level using your native file-browser; read, write, modify, delete or debug malicious data with tools you know.
-
-#### `Partial I/O`
-
-As a side-effect to its inherently simplistic design, reading and writing within large sets of data doesn't require reading everything into memory nor does it affect surrounding data; facilitating distributed collaborative editing. See [RFC13][] for more information.
-
-#### `No limits on size nor complexity`
-
-Store millions of strings, booleans, matrices.. groups of matrices.. matrices of groups, strings, booleans and vectors. On consumer hardware, in a matter of megabytes, without compression. Then go ahead and store billions.
-
-#### `Open specification, open source`
-
-There are no mysteries about the inner-workings of the data that you write; you may write personal tools for debugging, graphical interfaces or extensions to the standard. The specifications are all laid out below and collaboration is welcome. (Want Open Metadata in Lua, Java, PHP or C++?)
+|Feature                          |Description  |
+|:--------------------------------|:------------|
+|Non-destructive                  | Every change you make is maintained in history; facilitating persistent undo/redo, traceable history of who did what and when, including incremental versioning with arbitrary metadata, like a changelog or description. All retrievable at any point in time. |
+|Full disclosure                  | You may at any point in time browse to data at any hierarchical level using your native file-browser; read, write, modify, delete or debug malicious data with tools you know.    |
+|Partial I/O                      | As a side-effect to its inherently simplistic design, reading and writing within large sets of data doesn't require reading everything into memory nor does it affect surrounding data; facilitating distributed collaborative editing. See [RFC13][] for more information.
+|No limits on size nor complexity | Store millions of strings, booleans, matrices.. groups of matrices.. matrices of groups, strings, booleans and vectors. On consumer hardware, in a matter of megabytes, without compression. Then go ahead and store billions.
+|Open specification, open source  | There are no mysteries about the inner-workings of the data that you write; you may write personal tools for debugging, graphical interfaces or extensions to the standard. The specifications are all laid out below and collaboration is welcome. (Want Open Metadata in Lua, Java, PHP or C++?)
 
 # Specifications
 
@@ -81,6 +51,12 @@ The implementation you are reading about right now is LGPLv3 licensed software, 
 * [RFC46][]: Temporal Resolution
 
 # FAQ
+
+> Who uses Open Metadata?
+
+As part of developing a Digital Asset Management System here at Abstract Factory, we develop Open Metadata as the foundational building-block with which all metadata - including configuration, geometric proxy shapes, thumbnails and plain-old-data - is created and maintained.
+
+Read more about [us and Pipi here](http://abstractfactory.io)
 
 > Why Open Metadata and not Technology X?
 
