@@ -2,7 +2,7 @@
 
 ![](https://dl.dropbox.com/s/a3ln6q605fhkflp/basic.png)
 
-*Open Metadata* is a library used in associating metadata to folders on your file-system, designed for cuncurrent, high-performance and scalable digital asset management (DAM) systems.
+*Open Metadata* is a library used in associating metadata to folders on your file-system, designed for concurrent, high-performance and scalable digital asset management (DAM) systems.
 
 ### Installing
 
@@ -14,13 +14,12 @@
 $ python setup.py
 ```
 
-### Features
-
-There for you when..
+### Zen
 
 * ..change is common
 * ..space is cheap
 * ..control outweighs performance
+
 
 |Feature                          |Description  |
 |:--------------------------------|:------------|
@@ -30,7 +29,7 @@ There for you when..
 |No limits on size nor complexity | Store millions of strings, booleans, matrices.. groups of matrices.. matrices of groups, strings, booleans and vectors. On consumer hardware, in a matter of megabytes, without compression. Then go ahead and store billions.
 |Open specification, open source  | There are no mysteries about the inner-workings of the data that you write; you may write personal tools for debugging, graphical interfaces or extensions to the standard. The specifications are all laid out below and collaboration is welcome. (Want Open Metadata in Lua, Java, PHP or C++?)
 
-# Specifications
+### Specifications
 
 The Open Metadata technology is designed to organize, store, discover, access, analyze, share, and preserve diverse, complex data in continuously evolving heterogeneous computing and storage environments.
 
@@ -50,7 +49,7 @@ The implementation you are reading about right now is LGPLv3 licensed software, 
 * [RFC41][]: Driver
 * [RFC46][]: Temporal Resolution
 
-# FAQ
+### FAQ
 
 > Who uses Open Metadata?
 
@@ -70,7 +69,7 @@ This way, implementers can design their software by means of placing content, in
 
 Open Metadata was designed to facilitate metadata in content management. With metadata in content, it is possible to treat each file or folder as an stateful, intelligent unit capable of making desicions; this is what I call programmable content.
 
-# Usergroup
+### Usergroup
 
 We're all having a good time, here, join us
 https://groups.google.com/forum/#!forum/open-metadata

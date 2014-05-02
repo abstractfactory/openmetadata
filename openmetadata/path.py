@@ -224,23 +224,22 @@ class Path(object):
 
     @property
     def name(self):
-        """Return name excluding suffix
+        """Return name excluding suffix, excluding CONTAINER
 
         Example
             >>> path = Path(r'c:\users\marcus.test')
             >>> path.name
             'marcus'
-            >>> path.basename
-            'marcus.test'
-            >>> path.suffix
-            'test'
             >>> path = Path('/home/.meta')
             >>> path.name
-            '.meta'
+            'home'
 
         """
 
-        name = self._path.split('/')[-1] or self._path
+        name = self._path.split(self.PROCSEP)[-1] or self._path
+
+        if name == self.CONTAINER:
+            return self.parent.name
 
         if name.startswith("."):
             return name
