@@ -1,6 +1,6 @@
 ![](images/title.png)
 
-![](https://dl.dropbox.com/s/a3ln6q605fhkflp/basic.png)
+![](images/basic.png)
 
 *Open Metadata* is a library used in associating metadata to folders on your file-system, designed for concurrent, high-performance and scalable digital asset management (DAM) systems.
 
@@ -13,6 +13,8 @@
 # 3. Install
 $ python setup.py
 ```
+
+* Note that the installer requires [setuptools][] which you can get by installing [pip][].
 
 ### Zen
 
@@ -88,6 +90,8 @@ https://groups.google.com/forum/#!forum/open-metadata
 [RFC41]: http://rfc.abstractfactory.io/spec/41
 [RFC46]: http://rfc.abstractfactory.io/spec/46
 
+[setuptools]: https://pypi.python.org/pypi/setuptools
+[pip]: http://pip.readthedocs.org/en/latest/installing.html
 [Download repository]: https://github.com/abstractfactory/openmetadata/archive/master.zip
 [/examples]: https://github.com/abstractfactory/openmetadata/tree/master/openmetadata/examples
 [release]: https://github.com/abstractfactory/openmetadata/releases
