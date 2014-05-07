@@ -61,10 +61,10 @@ class Path(object):
     def __repr__(self):
         return u"%s(%r)" % (self.__class__.__name__, self.__str__())
 
-    def __iter__(self):
-        """Emulate iterating over a regular string"""
-        for char in self.as_str:
-            yield char
+    # def __iter__(self):
+    #     """Emulate iterating over a regular string"""
+    #     for char in self.as_str:
+    #         yield char
 
     def __hash__(self):
         return hash(self.as_str)
@@ -237,29 +237,44 @@ class Path(object):
             'marcus'
             >>> path = Path('/home/.meta')
             >>> path.name
-            'home'
+            '.meta'
 
         """
 
         name = self._path.split(self.PROCSEP)[-1] or self._path
 
-        if name == self.CONTAINER:
-            return self.parent.name
+        # if name == self.CONTAINER:
+        #     return self.parent.name
 
-        if name.startswith("."):
+        if name.startswith(self.EXT):
             return name
 
         if self.EXT in name:
-            name = name.split('.', 1)[0]
+            name = name.split(self.EXT, 1)[0]
 
         return name
 
     @property
     def basename(self):
-        """Return name including suffix"""
-        path = self._path
-        basename = path.rsplit(self.PROCSEP, 1)[-1]
-        return basename or path
+        """Return name including suffix
+
+        Example
+            >>> path = Path(r'c:\users\marcus.text')
+            >>> path.basename
+            'marcus.text'
+            >>> path = Path(r'/home/marcus.bin/something')
+            >>> path.basename
+            'something'
+            >>> path = Path(r'c:\users\marcus\.meta')
+            >>> path.basename
+            '.meta'
+        """
+
+        basename = self.name
+        suffix = self.suffix
+        if suffix:
+            basename = self.EXT.join([basename, suffix])
+        return basename or self._path
 
     @property
     def meta(self):
@@ -428,10 +443,18 @@ class Path(object):
             >>> path.suffix
             'ext'
 
+            >>> path = Path(r'c:\users\marcus\.meta')
+            >>> path.suffix
+
+
         """
 
         if not self.__suffix:
-            basename = self.basename
+            basename = self._path.rsplit(self.PROCSEP, 1)[-1]
+
+            if basename == self.CONTAINER:
+                return None
+
             match = self.SuffixPattern.search(basename)
             if match:
                 # Disregard the "."
@@ -576,11 +599,14 @@ if __name__ == '__main__':
     doctest.testmod()
 
     # path = Path('/root/.meta/child.ext&opt')
-    path = WindowsPath(r'c:\users')
+    # path = WindowsPath(r'c:\users')
+    # path = Path(r'c:\users\marcus\.meta')
+    # print path.suffix
+    # print path.basename
     # path = WindowsPath('/c')
     # print path.as_raw
     # print path._path
-    print os.path.join(path.parent.as_str, 'test')
+    # print os.path.join(path.parent.as_str, 'test')
     # print path.parent.parent._path
     # print path.parent.parent + 'local'
     # print os.path.join(path.parent.parent.as_str, 'local')

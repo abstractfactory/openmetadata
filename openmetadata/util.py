@@ -1,7 +1,6 @@
 from openmetadata import lib
 from openmetadata import service
 from openmetadata import error
-# import openmetadata.path
 
 
 def locations(path):
@@ -55,7 +54,7 @@ def find_all(path, name):
         path = lib.Path(path)
 
     container = lib.Path.CONTAINER
-    if not container in path:
+    if not container in path.as_str:
         path = path + container
 
     try:

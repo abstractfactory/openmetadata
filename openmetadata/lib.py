@@ -128,6 +128,10 @@ class Node(object):
         return path
 
     @property
+    def name(self):
+        return self.raw_path.name
+
+    @property
     def raw_path(self):
         return self._path
 
@@ -305,6 +309,10 @@ class Location(Node):
     @property
     def path(self):
         return self._path + self._path.CONTAINER
+
+    @property
+    def name(self):
+        return self.raw_path.parent.name
 
     @property
     def parent(self):

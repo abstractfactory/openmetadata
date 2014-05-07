@@ -167,6 +167,9 @@ def remove(node, permanent=False):
 def trash(node):
     trash_path = node.path.parent + lib.TRASH
 
+    if not lib.Path.CONTAINER in trash_path.as_str:
+        trash_path = trash_path + lib.Path.CONTAINER
+
     # Ensure node.path.name is unique in trash_path, as per RFC14
     if service.exists(trash_path.as_str):
         for match in util.find_all(trash_path.as_str, node.path.name):
@@ -177,6 +180,8 @@ def trash(node):
                      "%r from trash" % match_path.name)
 
     basename = node.path.basename
+    log.info("Trashing basename: %s" % basename)
+    log.info("Fullname: %s" % node.path.as_str)
     deleted_path = trash_path + basename
 
     assert not service.exists(deleted_path.as_str)
