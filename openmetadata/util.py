@@ -1,6 +1,7 @@
 from openmetadata import lib
 from openmetadata import service
 from openmetadata import error
+# import openmetadata.path
 
 
 def locations(path):
@@ -50,8 +51,15 @@ def find_all(path, name):
 
     """
 
+    if isinstance(path, basestring):
+        path = lib.Path(path)
+
+    container = lib.Path.CONTAINER
+    if not container in path:
+        path = path + container
+
     try:
-        dirs_, files_ = service.ls(path)
+        dirs_, files_ = service.ls(path.as_str)
     except error.Exists:
         return
 
@@ -75,3 +83,9 @@ def find(path, name):
         return next(found)
     except StopIteration:
         return None
+
+
+if __name__ == '__main__':
+    import os
+    home = os.path.expanduser('~')
+    print find(home, 'rootDir')

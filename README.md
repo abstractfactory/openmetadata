@@ -50,6 +50,8 @@ The implementation you are reading about right now is LGPLv3 licensed software, 
 * [RFC35][]: Garbage Collection
 * [RFC41][]: Driver
 * [RFC46][]: Temporal Resolution
+* [RFC59][]: Omlang, pure programmable content
+* [RFC61][]: Terminal Metadata
 
 ### FAQ
 
@@ -89,6 +91,8 @@ https://groups.google.com/forum/#!forum/open-metadata
 [RFC35]: http://rfc.abstractfactory.io/spec/35
 [RFC41]: http://rfc.abstractfactory.io/spec/41
 [RFC46]: http://rfc.abstractfactory.io/spec/46
+[RFC59]: http://rfc.abstractfactory.io/spec/59
+[RFC61]: http://rfc.abstractfactory.io/spec/61
 
 [setuptools]: https://pypi.python.org/pypi/setuptools
 [pip]: http://pip.readthedocs.org/en/latest/installing.html

@@ -61,6 +61,11 @@ class Path(object):
     def __repr__(self):
         return u"%s(%r)" % (self.__class__.__name__, self.__str__())
 
+    def __iter__(self):
+        """Emulate iterating over a regular string"""
+        for char in self.as_str:
+            yield char
+
     def __hash__(self):
         return hash(self.as_str)
 
