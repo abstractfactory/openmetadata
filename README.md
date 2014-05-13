@@ -53,6 +53,8 @@ The implementation you are reading about right now is LGPLv3 licensed software, 
 * [RFC59][]: Omlang, pure programmable content
 * [RFC61][]: Terminal Metadata
 
+Note: this isn't documentation. The implementation builds upon these specifiations, but isn't fully implemented yet and may lack in certain areas. The goal is for this and other implementations to fully support each specification listed here.
+
 ### FAQ
 
 > Who uses Open Metadata?
