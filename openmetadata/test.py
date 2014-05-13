@@ -11,12 +11,12 @@ examples = os.path.join(examples, 'examples')
 
 def test_example_basic():
     path = os.path.join(examples, 'basic.py')
-    subprocess.Popen(['python', path])
+    subprocess.call(['python', path])
 
 
 def test_example_convenience():
     path = os.path.join(examples, 'convenience.py')
-    subprocess.Popen(['python', path])
+    subprocess.call(['python', path])
 
 
 if __name__ == '__main__':
