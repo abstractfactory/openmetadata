@@ -27,6 +27,11 @@ Node = lib.Node
 Location = lib.Location
 Entry = lib.Entry
 
+# Include utilities
+find = util.find
+find_all = util.find_all
+split = util.split
+
 __all__ = [
     # Main objects
     'Node',
@@ -41,6 +46,7 @@ __all__ = [
     'remove',
     'clear',
     'find',
+    'split',
     # 'find_all',
     # 'exists',
     # 'existing',
@@ -502,11 +508,6 @@ def isentry(node):
     return isinstance(node, lib.Entry)
 
 
-# Include utilities
-find = util.find
-find_all = util.find_all
-
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
@@ -515,20 +516,4 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    path = r'c:\users\marcus'
-    location = om.Location(path)
-    om.pull(location)
-    for child in location:
-        print child.isparent
-
-    # print location.value
-    # print location.isparent
-    # age = location['age']
-    # om.pull(age)
-    # print age.value
-    # print age.isparent
-    # gen = history.children
-    # gen.next()
-    # age = om.history(location['age'])
-    # imprint = age.next()
-    # om.restore(imprint)
+    print om.read(r'c:\users\marcus', '/rootDir')

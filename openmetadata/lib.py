@@ -31,6 +31,18 @@ type_to_suffix = {
 }
 
 
+defaults = {
+    'bool':   False,
+    'int':    0,
+    'float':  0.0,
+    'string': '',
+    'text':   '',
+    'date':   service.currenttime,
+    'list':   [],
+    'dict':   {}
+}
+
+
 class Node(object):
 
     __metaclass__ = abc.ABCMeta
@@ -319,15 +331,12 @@ class Location(Node):
         yield Location(self._path.parent)
 
     def flush(self):
+        """Based on HDF5 flush; calls upon separate mechanisms"""
         raise NotImplementedError
 
     @property
     def isparent(self):
         return True
-
-    # @property
-    # def haschildren(self):
-    #     return True
 
     @property
     def hasparent(self):
@@ -349,7 +358,7 @@ class Entry(Node):
         quantity or information, a value.
 
         On disk, a entry is both a file and a folder; depe-
-        nding on its value. E.g. a list if a folder, bool is a file.
+        nding on its value. E.g. a list is a folder, bool is a file.
 
     Reference
         http://en.wikipedia.org/wiki/Entry_(computer_science)
@@ -357,7 +366,25 @@ class Entry(Node):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+        Example
+            >>> entry = Entry('home')
+            >>> entry.path.as_str
+            'home'
+
+            >>> import os
+            >>> path = os.path.expanduser('~')
+            >>> location = Location(path)
+            >>> entry = Entry('home', parent=location)
+            >>> test = os.path.join(path, Path.CONTAINER, 'home')
+            >>> assert entry.path.as_str == test
+
+        """
+
         super(Entry, self).__init__(*args, **kwargs)
+
+        if not self._path.isrelative:
+            raise error.RelativePath('Path must be relative: %s' % path)
 
         if len(args) > 1:
             self.value = args[1]
@@ -375,7 +402,7 @@ class Entry(Node):
 
         # Reset isparent flag.
         #
-        # Whether or not `self` is a collection is
+        # Whether or not `self` is capable of being a parent is
         # henceforth determined by its corresponding value.
         #
         self._isparent = None
@@ -411,8 +438,20 @@ class Entry(Node):
 
     def dump(self):
         """Serialise contents of `self`"""
-        assert not isinstance(self._value, dict)
+        assert not isinstance(self.value, dict)
         return json.dumps(self.value)
+
+    # def _dump(self, root):
+    #     result = {}
+    #     for name, entry in root.value.iteritems():
+    #         if entry.isparent:
+    #             if not name in result:
+    #                 result[name] = {}
+    #             result[name] = self._dump(entry)
+    #             continue
+
+    #         result[name] = entry.value
+    #     return result
 
 
 # class Imprint(Group):
@@ -450,18 +489,6 @@ class Entry(Node):
 #         return self._time
 
 
-defaults = {
-    'bool':   False,
-    'int':    0,
-    'float':  0.0,
-    'string': '',
-    'text':   '',
-    'date':   service.currenttime,
-    'list':   [],
-    'dict':   {}
-}
-
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
@@ -471,3 +498,5 @@ if __name__ == '__main__':
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
+    entry = om.Entry('/test', parent=location)
+    print entry.path
