@@ -316,7 +316,7 @@ class Location(Node):
         super(Location, self).__init__(*args, **kwargs)
 
         if not self._path.isabsolute:
-            raise error.RelativePath('Path must be absolute: %s' % path)
+            raise error.RelativePath('Path must be absolute: %s' % self._path)
 
     @property
     def path(self):

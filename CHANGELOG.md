@@ -1,3 +1,8 @@
+# 0.5.2
+
+om.split(path=string) -- Break apart location from metapath
+om.convert(path=string) -- Turn an absolute path into Entry object
+
 # 0.5
 
 An *Epic Eureka Moment (tm)* release

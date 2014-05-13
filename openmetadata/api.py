@@ -42,6 +42,7 @@ __all__ = [
     'flush',
     'read',
     'write',
+    'convert',
     'pull',
     'remove',
     'clear',
@@ -378,7 +379,22 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
 # ---------------------------------------------------------------------
 
 
-def read(path, metapath=None, convert=True):
+def convert(path):
+    """Turn a full `path` into an entry
+
+    Example
+        >> path = r'c:\users\marcus\om\.meta\test'
+        >> entry = convert(path)
+        >> entry
+        Entry('test')
+
+    """
+
+    location, metapath = split(path)
+    return read(location, metapath, _return_root=True)
+
+
+def read(path, metapath=None, convert=True, **kwargs):
     """
     Parameters
         path        --
@@ -386,6 +402,12 @@ def read(path, metapath=None, convert=True):
         convert     --
 
     """
+
+    # Unsupported keyword arguments
+    _return_root = kwargs.pop('_return_root', False)
+
+    for key, value in kwargs.iteritems():
+        raise TypeError("read() got an unexpected keyword argument %r" % key)
 
     # Allow paths to include the container path, .meta
     # E.g. /home/marcus/.meta == /home/marcus
@@ -428,6 +450,12 @@ def read(path, metapath=None, convert=True):
         pull(root)
     except error.Exists:
         return None
+
+    if _return_root:
+        # Return entry immediately, don't bother breaking it apart.
+        # This is used mainly for convert() and isn't meant to be used
+        # on its own.
+        return root
 
     if convert:
         # Convert values to native Python objects.
@@ -516,4 +544,6 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    print om.read(r'c:\users\marcus', '/rootDir')
+    # entry = om.read(r'c:\users\marcus', '/rootDir', _return_root=True)
+    entry = om.convert(r'c:\users\marcus\.meta\rootDir')
+    print entry
