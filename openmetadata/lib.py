@@ -58,7 +58,7 @@ class Node(object):
 
     def __getitem__(self, item):
         try:
-            if not self.iscollection:
+            if not self.isparent:
                 raise KeyError
             if self._value is None:
                 raise KeyError
@@ -102,7 +102,7 @@ class Node(object):
 
         self._value = value
         self._parent = []
-        self._iscollection = None
+        self._isparent = None
         self.isdirty = False
         self._mro = [self]
 
@@ -187,7 +187,7 @@ class Node(object):
         copy = self.__class__(path, parent=parent)
 
         # Perform a deep copy, including all children
-        if self.iscollection:
+        if self.isparent:
             if deep:
                 for _, value in self._value.iteritems():
                     value.copy(deep=True, parent=copy)
@@ -216,7 +216,7 @@ class Node(object):
         """List contained children"""
         tree = '\t' * _level + self.path.name + '\n'
 
-        if self.iscollection:
+        if self.isparent:
             for node in self:
                 tree += node.ls(_level + 1)
 
@@ -250,7 +250,7 @@ class Node(object):
         return self.raw_path.copy(suffix=suffix)
 
     @property
-    def iscollection(self):
+    def isparent(self):
         """`self` contains one or more entrys
 
         Description
@@ -260,18 +260,18 @@ class Node(object):
 
         """
 
-        if self._iscollection is None:
+        if self._isparent is None:
             return isinstance(self._value, dict)
-        return self._iscollection
+        return self._isparent
 
-    @iscollection.setter
-    def iscollection(self, value):
+    @isparent.setter
+    def isparent(self, value):
         """Manually specify if object is a collection"""
-        self._iscollection = value
+        self._isparent = value
 
     @property
     def haschildren(self):
-        return self.iscollection and self._value
+        return self.isparent and self._value
 
     @property
     def hasvalue(self):
@@ -322,7 +322,7 @@ class Location(Node):
         raise NotImplementedError
 
     @property
-    def iscollection(self):
+    def isparent(self):
         return True
 
     # @property
@@ -373,12 +373,12 @@ class Entry(Node):
         self._path = self._resolve_suffix(value)
         assert self.path.suffix
 
-        # Reset iscollection flag.
+        # Reset isparent flag.
         #
         # Whether or not `self` is a collection is
         # henceforth determined by its corresponding value.
         #
-        self._iscollection = None
+        self._isparent = None
 
         # Values are always overridden.
         self.clear()

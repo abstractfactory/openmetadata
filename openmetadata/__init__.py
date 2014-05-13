@@ -21,11 +21,11 @@ Functionality
     Main
     ----------------------
 
-    flush           -- Write to database
-    remove          -- Remove from database
+    flush           -- Write to datastore
+    remove          -- Remove from datastore
     find            -- Return first match
-    pull            -- Read from database
-    inherit         -- Read cascading from database
+    pull            -- Read from datastore
+    inherit         -- Read cascading from datastore
 
     Convenience
     ----------------------

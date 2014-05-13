@@ -27,6 +27,29 @@ Node = lib.Node
 Location = lib.Location
 Entry = lib.Entry
 
+__all__ = [
+    # Main objects
+    'Node',
+    'Location',
+    'Entry',
+
+    # Main functionality
+    'flush',
+    'read',
+    'write',
+    'pull',
+    'remove',
+    'clear',
+    'find',
+    # 'find_all',
+    # 'exists',
+    # 'existing',
+    'inherit',
+    # 'history',
+    # 'restore',
+    'islocation',
+    'isentry'
+]
 
 # ---------------------------------------------------------------------
 #
@@ -47,7 +70,7 @@ def push():
 def flush(node, track_history=True, simulate=False):
     assert isinstance(node, lib.Node)
 
-    if node.iscollection:
+    if node.isparent:
         path = node.path.as_str
 
         service.flush_dir(path)
@@ -77,7 +100,7 @@ def flush(node, track_history=True, simulate=False):
 
 
 def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
-    """Physically retrieve value from database
+    """Physically retrieve value from datastore
 
     Parameters
         lazy        -- Only pull if no existing value already exists
@@ -116,16 +139,24 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
     path = path.as_str
     if service.isdir(path):
         dirs, files = service.ls(path)
-        for entry in dirs + files:
-            var = Entry(entry, parent=node)
-            var.iscollection = True
+
+        for entry in dirs:
+            child = Entry(entry, parent=node)
+            child.isparent = True
+
+        for entry in files:
+            child = Entry(entry, parent=node)
+            child.isparent = False
+
     else:
         value = service.open(path)
         node.load(value)
+        # node.isparent = False
+        # entry.isparent = False
 
     # Continue pulling children until `depth` is reached
     if _currentlevel < depth:
-        if node.iscollection:
+        if node.isparent:
             for child in node:
                 pull(child,
                      lazy=lazy,
@@ -138,7 +169,7 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
 
 
 def remove(node, permanent=False):
-    """Remove `node` from database, either to trash or permanently"""
+    """Remove `node` from datastore, either to trash or permanently"""
 
     if not service.exists(node.path.as_str):
         log.warning("remove(): %s did not exist" % node.path.as_str)
@@ -402,7 +433,7 @@ def read(path, metapath=None, convert=True):
         # Output
         #   --> ['child', 'anotherchild']
 
-        if root.iscollection:
+        if root.isparent:
             children = []
             for child in root:
                 children.append(child.path.name)
@@ -416,7 +447,7 @@ def read(path, metapath=None, convert=True):
         # Return value as-is, meaning Open Metadata
         # `Entry` and `Location` objects.
 
-        if root.iscollection:
+        if root.isparent:
             # Output
             #   --> [Entry('child'), Entry('anotherchild')]
             value = root.value
@@ -476,31 +507,6 @@ find = util.find
 find_all = util.find_all
 
 
-__all__ = [
-    # Main objects
-    'Node',
-    'Location',
-    'Entry',
-
-    # Main functionality
-    'flush',
-    'read',
-    'write',
-    'pull',
-    'remove',
-    'clear',
-    'find',
-    # 'find_all',
-    # 'exists',
-    # 'existing',
-    'inherit',
-    # 'history',
-    # 'restore',
-    'islocation',
-    'isentry'
-]
-
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
@@ -509,11 +515,18 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    path = r'c:\users\marcus\om2'
+    path = r'c:\users\marcus'
     location = om.Location(path)
     om.pull(location)
-    history = location['.history']
-    om.pull(history)
+    for child in location:
+        print child.isparent
+
+    # print location.value
+    # print location.isparent
+    # age = location['age']
+    # om.pull(age)
+    # print age.value
+    # print age.isparent
     # gen = history.children
     # gen.next()
     # age = om.history(location['age'])
