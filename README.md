@@ -11,10 +11,12 @@
 
 ```bash
 # 3. Install
-$ python setup.py
+$ python setup.py install
 ```
 
 * Note that the installer requires [setuptools][] which you can get by installing [pip][].
+
+* Note that you must be located within the installation folder prior to running `python setup.py install`
 
 ### Zen
 
