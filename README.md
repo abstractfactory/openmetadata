@@ -11,6 +11,7 @@
 
 ```bash
 # 3. Install
+$ cd openmetadata-x.x.x
 $ python setup.py install
 ```
 
