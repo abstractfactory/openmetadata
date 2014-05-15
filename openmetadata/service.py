@@ -35,7 +35,14 @@ def basename(path):
     return os.path.basename(path)
 
 
-def exists(path):
+def exists(path, **kwargs):
+
+    # Hidden arguments
+    ignore_case = kwargs.get('ignore_case', True)
+
+    if ignore_case:
+        path = path.lower()
+
     return os.path.exists(path)
 
 

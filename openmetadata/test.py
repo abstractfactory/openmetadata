@@ -20,8 +20,9 @@ def test_example_convenience():
 
 
 def test_isparent():
-	"""Folders are parents, files are not"""
-	pass
+    """Folders are parents, files are not"""
+    pass
+
 
 if __name__ == '__main__':
     import nose

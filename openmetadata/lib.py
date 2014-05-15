@@ -15,7 +15,10 @@ LOG = logging.getLogger('openmetadata.lib')
 osname = service.OSNAME
 path_map = {'nt': path.WindowsPath,
             'posix': path.PosixPath}
-Path = path_map[osname]
+
+Path = path.Path  # unbiased path
+DefaultPath = path_map[osname]
+MetaPath = path.MetaPath
 
 
 type_to_suffix = {
@@ -315,8 +318,12 @@ class Location(Node):
     def __init__(self, *args, **kwargs):
         super(Location, self).__init__(*args, **kwargs)
 
+        # Give location a platform-dependent
+        # path; e.g. either WindowsPath or PosixPath.
+        self._path = DefaultPath(self._path.as_str)
+
         if not self._path.isabsolute:
-            raise error.RelativePath('Path must be absolute: %s' % self._path)
+            raise error.RelativePath('DefaultPath must be absolute: %s' % self._path)
 
     @property
     def path(self):
@@ -365,6 +372,27 @@ class Entry(Node):
 
     """
 
+    # def __new__(cls, *args, **kwargs):
+    #     path = kwargs.get('path') or args[0]
+    #     if isinstance(path, basestring):
+    #         path = MetaPath(path)
+
+    #     parts = path.parts
+    #     while parts:
+    #         current = parts.pop(0)
+    #         while current == '':
+    #             current = parts.pop(0)
+
+    #     # Update arguments
+    #     if 'path' in kwargs:
+    #         kwargs['path'] = path
+    #     else:
+    #         list(args)[0] = path
+    #         args = tuple(args)
+
+    #     obj = super(Entry, cls).__new__(cls, *args, **kwargs)
+    #     return obj
+
     def __init__(self, *args, **kwargs):
         """
         Example
@@ -376,16 +404,20 @@ class Entry(Node):
             >>> path = os.path.expanduser('~')
             >>> location = Location(path)
             >>> entry = Entry('home', parent=location)
-            >>> test = os.path.join(path, Path.CONTAINER, 'home')
+            >>> test = os.path.join(path, DefaultPath.CONTAINER, 'home')
             >>> assert entry.path.as_str == test
 
         """
 
         super(Entry, self).__init__(*args, **kwargs)
 
-        if not self._path.isrelative:
-            raise error.RelativePath('Path must be relative: %s' % path)
+        self._path = MetaPath(self._path.as_str)
 
+        if not self._path.isrelative:
+            raise error.RelativePath(
+                'DefaultPath must be relative: %r' % self._path)
+
+        # Initialise value to default
         if len(args) > 1:
             self.value = args[1]
         elif 'value' in kwargs:
@@ -491,12 +523,15 @@ class Entry(Node):
 
 if __name__ == '__main__':
     import doctest
-    doctest.testmod()
+    # doctest.testmod()
 
     import openmetadata as om
     om.setup_log('openmetadata')
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
-    entry = om.Entry('/test', parent=location)
+    entry = om.Entry('test', parent=location)
     print entry.path
+    
+    # meta = DefaultPath(r'c:\users') + MetaPath('/test')
+    # print meta

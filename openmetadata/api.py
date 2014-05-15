@@ -20,9 +20,11 @@ log = logging.getLogger('openmetadata.api')
 Node        -- Superclass to every other object in OM
 Location    -- Path to which metadata is associated
 Entry       -- Dynamically typed metadata entry
+Path
 
 """
 
+Path = lib.Path
 Node = lib.Node
 Location = lib.Location
 Entry = lib.Entry
@@ -31,12 +33,14 @@ Entry = lib.Entry
 find = util.find
 find_all = util.find_all
 split = util.split
+default = util.default
 
 __all__ = [
     # Main objects
     'Node',
     'Location',
     'Entry',
+    'Path',
 
     # Main functionality
     'flush',
@@ -48,6 +52,7 @@ __all__ = [
     'clear',
     'find',
     'split',
+    'default',
     # 'find_all',
     # 'exists',
     # 'existing',
@@ -75,15 +80,106 @@ def push():
 
 
 def flush(node, track_history=True, simulate=False):
+    """Commit pending values to the data-store
+
+    The flush occurs in three stages;
+
+    * Find
+    * Track
+    * Store
+
+    1. Find
+        Here, the name of the requested `node` is
+        looked up against the datastore.
+
+        ```bash
+        # We want to write..
+        $ /home/marcus/.meta/new.string
+
+        # ..but this one already exists
+        $ /home/marcus/.meta/new.int
+        ```
+
+    2. Track
+        If an existing entry is found, store its
+        current value, along with who and when.
+
+    3. Store
+        Finally, commit the values to disk.
+
+    Args:
+        node: Node to flush
+        track_history (bool): Produce history of `node`
+        simulate (bool): Do not actually write anything (NotImplemented)
+
+    Returns:
+        Node: Unmodified
+
+    Raises:
+
+
+
+    """
+
     assert isinstance(node, lib.Node)
 
-    if node.isparent:
-        path = node.path.as_str
+    parent = next(node.parent)
+    history_node = node
+    existing_node = None
 
-        service.flush_dir(path)
+    #  _______________
+    # |      -->      |
+    # |    /  ?  \    |
+    # |    \     /    |
+    # |      <--      |
+    # |_______________|
+    #
+    # Track and recycle existing
+
+    name = node.path.name
+
+    existing = find(parent.path.as_str, name)
+    if existing:
+        existing_node = Entry(existing, parent=parent)
+
+    history_node = existing_node or node
+    if not history_node.isparent:
+        if track_history and service.exists(history_node.path.as_str):
+            _make_history(history_node)
+
+    #  _______________
+    # |      -->      |
+    # |    /  !  \    |
+    # |    \     /    |
+    # |      <--      |
+    # |_______________|
+    #
+    # Recycle existing
+
+    if existing_node and node.path != existing_node.path:
+        # TODO: this should really be permanent, as the copy
+        # has already been stored in history. But, for safety
+        # let's keep it around until someone complains about it.
+        remove(existing_node, permanent=False)
+
+    #  _______________
+    # |      -->      |
+    # |    /  y  \    |
+    # |    \     /    |
+    # |      <--      |
+    # |_______________|
+    #
+    # Commit to datastore
+
+    if node.isparent:
+        service.flush_dir(node.path.as_str)
 
         for child in node:
             flush(child, track_history, simulate)
+
+        if existing_node:
+            log.warning("Flushed a folder of "
+                        "new suffix, be careful: %r" % node.path.as_str)
 
     else:
         if not node.type:
@@ -94,10 +190,6 @@ def flush(node, track_history=True, simulate=False):
 
         path = node.path.as_str
         value = node.dump()
-
-        if track_history:
-            if service.exists(path):
-                _make_history(node)
 
         service.flush(path, value)
 
@@ -391,7 +483,12 @@ def convert(path):
     """
 
     location, metapath = split(path)
-    return read(location, metapath, _return_root=True)
+    return read(location,
+                metapath,
+                _return_root=True,  # Return object, as opposed to values
+                _return_nonexisting=True)  # Return object,
+                                           # regardless of
+                                           # existance.
 
 
 def read(path, metapath=None, convert=True, **kwargs):
@@ -405,6 +502,7 @@ def read(path, metapath=None, convert=True, **kwargs):
 
     # Unsupported keyword arguments
     _return_root = kwargs.pop('_return_root', False)
+    _return_nonexisting = kwargs.pop('_return_nonexisting', False)
 
     for key, value in kwargs.iteritems():
         raise TypeError("read() got an unexpected keyword argument %r" % key)
@@ -422,7 +520,8 @@ def read(path, metapath=None, convert=True, **kwargs):
         try:
             pull(root)
         except error.Exists:
-            return None
+            if not _return_nonexisting:
+                return None
 
         current = parts.pop(0)
         while current == '':
@@ -444,12 +543,18 @@ def read(path, metapath=None, convert=True, **kwargs):
                     raise KeyError
 
         except KeyError:
-            return None
+            if not _return_nonexisting:
+                return None
+
+            # If we're interested in non-existent
+            # entries, carry on..
+            root = lib.Entry(name, parent=root)
 
     try:
         pull(root)
     except error.Exists:
-        return None
+        if not _return_nonexisting:
+            return None
 
     if _return_root:
         # Return entry immediately, don't bother breaking it apart.
@@ -544,6 +649,7 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    # entry = om.read(r'c:\users\marcus', '/rootDir', _return_root=True)
-    entry = om.convert(r'c:\users\marcus\.meta\rootDir')
-    print entry
+    path = r'c:\users\marcus\om\.meta\test'
+    entry = convert(path)
+    entry.value = 5
+    flush(entry)

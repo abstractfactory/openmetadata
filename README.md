@@ -69,6 +69,16 @@ Read more about [us and Pipi here](http://abstractfactory.io)
 
 Many alternatives were, and continue to be evaluated. Head over to [RFC24](http://rfc.abstractfactory.io/spec/24/) for an overview.
 
+> I'm using a database for this stuff.
+
+The relational database is proven, reliable and very efficient. It's designed for storage and retrieval of large amounts of static, uniform and small data in a very short amount of time, and it does this well.
+
+Open Metadata was designed for situations where you favour infrequently accessed, heterogenous, sparse and large data; typically true in content creation management systems.
+
+Think of it this way; if the data you're looking to store require fast comparisons and arbitrary queries - like when you're working with billions of bank transactions - then a relational database is probably what you want. On the other hand, if you're building software upon data that changes often, where individual sets of data might end up in the gigabyte-range and where you need control more than you need performance, then Open Metadata is probably what you want. 
+
+Open Metadata is robust, resilient and responds well to change.
+
 > What is programmable content?
 
 In a data-oriented architecture, data controls the flow of information, not your software. Your software is designed to take instructions from data external to itself as a way to de-couple programmers from implementers.

@@ -42,13 +42,13 @@ class Path(object):
     log = logging.getLogger('openmetadata.path.Path')
 
     EXT = '.'
-    PARENT_DIR = '..'
-    CURRENT_DIR = '.'
+    PARENT_DIR = '..'  # Used in resolving relative path
+    CURRENT_DIR = '.'  # -||-
     CONTAINER = '.meta'
-    OPTSEP = '&'
-    SEPARATOR = '/'
-    METASEP = '/'  # Separator of metapaths
-    PROCSEP = '/'  # Separator of `processing` (see above)
+    SEPARATOR = '/'  # Default separator
+    OPTSEP = '&'     # Option separator
+    METASEP = '/'    # Separator of metapaths
+    PROCSEP = '/'    # Separator of `processing` (see above)
     FAMILY = None
 
     SuffixPattern = re.compile(r'\..*$')
@@ -580,23 +580,19 @@ class WindowsPath(DirPath):
 
 
 class PosixPath(DirPath):
-    SEPARATOR = '/'
-
-    def __init__(self, *args, **kwargs):
-        super(PosixPath, self).__init__(*args, **kwargs)
+    pass
 
 
 class MetaPath(DirPath):
-    SEPARATOR = '/'
+    pass
 
 
 if __name__ == '__main__':
-    import openmetadata as om
-    om.setup_log()
-
-    import os
     import doctest
     doctest.testmod()
+
+    import openmetadata as om
+    om.setup_log()
 
     # path = Path('/root/.meta/child.ext&opt')
     # path = WindowsPath(r'c:\users')
@@ -615,7 +611,7 @@ if __name__ == '__main__':
     # print Path.OPTSEP
     # print '/test/some&folder'.rsplit(Path.OPTSEP)
     # print Path.splitoption('/test/some&folder')
-    
+
     # print path.basename
     # print path.suffix
     # print path.option

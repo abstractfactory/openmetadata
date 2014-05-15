@@ -1,3 +1,52 @@
+# 0.5.3
+
+### No more name-conflicts
+
+Prior to 0.5.3, an entry could get written under multiple suffixes:
+
+```python
+om.write('/home/marcus', 'isawesome.string', 'True')
+om.write('/home/marcus', 'isawesome.int', 'True')
+```
+
+This would produce two entries of `isawesome`, without incrementing history for the original when attempting to write to the new.
+
+```bash
+$ ls
+isawesome.string
+isawesome.int
+```
+
+Names of entries MUST remain unique and so now, in 0.5.3, this is true.
+
+```python
+# First entry is written.
+om.write('/home/marcus', 'isawesome.string', 'True')
+
+# Before writing, history is maintained for original `isawesome.string`
+# in addition to the original being removed.
+om.write('/home/marcus', 'isawesome.int', 'True')
+```
+
+```bash
+$ ls
+isawesome.int
+```
+
+### Case-insensitivity
+
+Open Metadata now defaults to case-insensitivity; meaning that utilities such as..
+
+```python
+>>> om.find('/home/marcus', 'MynAME')
+```
+
+..will return identical results as..
+
+```python
+>>> om.find('/home/marcus', 'myname')
+```
+
 # 0.5.2
 
 om.split(path=string) -- Break apart location from metapath

@@ -1,27 +1,30 @@
 from openmetadata import lib
 from openmetadata import service
 from openmetadata import error
-import openmetadata.path
 
 
 __all__ = [
     'split',
     'find_all',
-    'find'
+    'find',
+    'default',
 ]
+
+
+def default(suffix):
+    return lib.defaults.get(suffix)
 
 
 def split(path):
     r"""Separate location from metapath
 
     Example
-        >>> import os
-        >>> path = r'c:\users\marcus\.meta\key'
-        >>> split(path)
+        >> path = r'c:\users\marcus\.meta\key'
+        >> split(path)
         ('c:\\users\\marcus', '/key')
 
-        >>> path = r'c:\users\marcus'
-        >>> split(path)
+        >> path = r'c:\users\marcus'
+        >> split(path)
         ('c:\\users\\marcus', None)
 
     """
@@ -60,7 +63,7 @@ def parse_metapath(metapath):
     return parts
 
 
-def find_all(path, name):
+def find_all(path, name, **kwargs):
     """Find `name` in `path`, regardless of suffix
 
     Return relative path to found entry
@@ -77,6 +80,12 @@ def find_all(path, name):
         'entry3.bool'
 
     """
+
+    if not service.exists(path):
+        return
+
+    # Hidden arguments
+    ignore_case = kwargs.get('ignore_case', True)
 
     if isinstance(path, basestring):
         path = lib.Path(path)
@@ -100,6 +109,10 @@ def find_all(path, name):
             except ValueError:
                 entry_no_suffix = entry
 
+        if ignore_case:
+            name = name.lower()
+            entry_no_suffix = entry_no_suffix.lower()
+
         if entry_no_suffix == name:
             yield entry
 
@@ -112,10 +125,15 @@ def find(path, name):
         return None
 
 
+def search(path, name):
+    """Recursuvely find `name` within directory tree of `path`"""
+    raise NotImplementedError
+
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
 
     import os
     home = os.path.expanduser('~')
-    print find(home, 'rootDir')
+    print find(home, 'rootDIr')
