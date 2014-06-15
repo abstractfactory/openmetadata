@@ -298,6 +298,9 @@ def trash(node):
     trash_path = node.path.parent + lib.TRASH
 
     if not lib.Path.CONTAINER in trash_path.as_str:
+        # Open Metadata only bothers with .meta subfolders.
+        # In cases where we trash the .meta folder, we'll
+        # have to store it underneath an additional .meta
         trash_path = trash_path + lib.Path.CONTAINER
 
     # Ensure node.path.name is unique in trash_path, as per RFC14
@@ -314,7 +317,7 @@ def trash(node):
     log.info("Fullname: %s" % node.path.as_str)
     deleted_path = trash_path + basename
 
-    assert not service.exists(deleted_path.as_str)
+    assert not service.exists(deleted_path.as_str), deleted_path
 
     service.move(node.path.as_str, deleted_path.as_str)
     log.info("remove(): Successfully removed %r" % node.path.as_str)
@@ -539,7 +542,7 @@ def read(path, metapath=None, convert=True, **kwargs):
             # If metapath included a suffix,
             # ensure the child we fetch match this suffix.
             if suffix:
-                if not root.suffix == suffix:
+                if not root.path.suffix == suffix:
                     raise KeyError
 
         except KeyError:
@@ -617,7 +620,10 @@ def write(path, metapath, value=None):
         entry = Entry(entry_name, parent=root)
         root = entry
 
-    root.value = value
+    # If no suffix was specified, initialise a default suffix
+    # based on `value`
+    if not root.path.suffix:
+        root.value = value
 
     assert root.type
 
@@ -642,6 +648,7 @@ def isentry(node):
 
 
 if __name__ == '__main__':
+    import os
     import doctest
     doctest.testmod()
 
@@ -649,7 +656,7 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    path = r'c:\users\marcus\om\.meta\test'
-    entry = convert(path)
-    entry.value = 5
-    flush(entry)
+    # path = r'c:\users\marcus\om\.meta\test'
+    # path = r'S:\content\jobs\machine\appdata\.meta\text.string'
+    path = os.path.expanduser('~')
+    print read(path, 'rootDir.string')

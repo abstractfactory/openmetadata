@@ -372,27 +372,6 @@ class Entry(Node):
 
     """
 
-    # def __new__(cls, *args, **kwargs):
-    #     path = kwargs.get('path') or args[0]
-    #     if isinstance(path, basestring):
-    #         path = MetaPath(path)
-
-    #     parts = path.parts
-    #     while parts:
-    #         current = parts.pop(0)
-    #         while current == '':
-    #             current = parts.pop(0)
-
-    #     # Update arguments
-    #     if 'path' in kwargs:
-    #         kwargs['path'] = path
-    #     else:
-    #         list(args)[0] = path
-    #         args = tuple(args)
-
-    #     obj = super(Entry, cls).__new__(cls, *args, **kwargs)
-    #     return obj
-
     def __init__(self, *args, **kwargs):
         """
         Example
@@ -522,7 +501,7 @@ class Entry(Node):
 
 
 if __name__ == '__main__':
-    import doctest
+    # import doctest
     # doctest.testmod()
 
     import openmetadata as om
@@ -530,8 +509,9 @@ if __name__ == '__main__':
 
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
-    entry = om.Entry('test', parent=location)
+    # entry = om.Entry('test', parent=location)
+    entry = om.Entry('app.class', parent=location)
     print entry.path
-    
+
     # meta = DefaultPath(r'c:\users') + MetaPath('/test')
     # print meta

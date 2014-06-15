@@ -1,5 +1,28 @@
 # 0.5.3
 
+### Suffix-independend find()
+
+Find is supposed to "find" an entry within a directory, regardless of its suffix, and return the existing one (if one exists):
+
+```python
+>>> om.find('/home/marcus', 'myentry')
+'myentry.bool'
+```
+
+However, when querying by a specific suffix, it couldn't properly do its job.
+
+```python
+>>> om.find('/home/marcus', 'myentry.int')
+None
+```
+
+In 0.5.3, it does.
+
+```python
+>>> om.find('/home/marcus', 'myentry.int')
+'myentry.bool'
+```
+
 ### No more name-conflicts
 
 Prior to 0.5.3, an entry could get written under multiple suffixes:

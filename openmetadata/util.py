@@ -19,13 +19,18 @@ def split(path):
     r"""Separate location from metapath
 
     Example
-        >> path = r'c:\users\marcus\.meta\key'
-        >> split(path)
-        ('c:\\users\\marcus', '/key')
+        >>> path = r'c:\users\marcus\.meta\key'
+        >>> split(path)
+        ('c:/users/marcus', '/key')
 
-        >> path = r'c:\users\marcus'
-        >> split(path)
-        ('c:\\users\\marcus', None)
+        >>> path = r'c:\users\marcus'
+        >>> split(path)
+        ('c:/users/marcus', None)
+
+        # Suffixes are excluded
+        >>> path = r'c:\users\marcus\.meta\group.list\special.string'
+        >>> split(path)
+        ('c:/users/marcus', '/group/special')
 
     """
 
@@ -79,10 +84,19 @@ def find_all(path, name, **kwargs):
         >> find(path, 'entry3')
         'entry3.bool'
 
+        Ignore suffix
+
+        >> find(path, 'entry3.int')
+        'entry3.bool'
+
     """
 
     if not service.exists(path):
         return
+
+    # Ignore suffix
+    if not name.startswith('.'):
+        name = name.split(lib.Path.EXT, 1)[0]
 
     # Hidden arguments
     ignore_case = kwargs.get('ignore_case', True)
@@ -135,5 +149,5 @@ if __name__ == '__main__':
     doctest.testmod()
 
     import os
-    home = os.path.expanduser('~')
-    print find(home, 'rootDIr')
+    home = os.path.expanduser('~/om/.trash')
+    print find(home, '.meta')
