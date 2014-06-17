@@ -209,25 +209,6 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
     """
 
     path = node.path
-    if not service.exists(path.as_str):
-        """
-        If the name of `node` has been entered manually, chances
-        are that there is an existing node on disk under a different
-        suffix. If so, find a matching name, under any suffix,
-        and assume this is the one the user intended to pull from.
-
-        """
-        similar = util.find(path.parent.as_str, path.name)
-
-        if similar:
-            node._path = node.raw_path.copy(path=similar)
-            return pull(node,
-                        lazy=lazy,
-                        depth=depth,
-                        merge=merge,
-                        _currentlevel=_currentlevel)
-        else:
-            raise error.Exists("%s does not exist" % path)
 
     if lazy and node.hasvalue:
         return node
@@ -248,10 +229,12 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
             child.isparent = False
 
     else:
-        value = service.open(path)
+        try:
+            value = service.open(path)
+        except IOError:
+            raise error.Exists(path)
+
         node.load(value)
-        # node.isparent = False
-        # entry.isparent = False
 
     # Continue pulling children until `depth` is reached
     if _currentlevel < depth:
@@ -279,17 +262,6 @@ def remove(node, permanent=False):
         log.info("remote(): Permanently removed %r" % node.path.as_str)
     else:
         trash(node)
-
-    # Remove `node` from parent
-    # parent = None
-    # try:
-    #     parent = next(node.parent)
-    # except StopIteration:
-    #     pass
-
-    # if parent:
-    #     parent.remove(node.path.name)
-    #     log.info("Removing %s from %s" % (node, parent))
 
     return True
 
@@ -537,13 +509,14 @@ def read(path, metapath=None, convert=True, **kwargs):
             name, suffix = current, None
 
         try:
-            root = root[name]
-
+            new_root = root[name]
             # If metapath included a suffix,
             # ensure the child we fetch match this suffix.
             if suffix:
-                if not root.path.suffix == suffix:
+                if not new_root.path.suffix == suffix:
                     raise KeyError
+
+            root = new_root
 
         except KeyError:
             if not _return_nonexisting:
@@ -551,7 +524,7 @@ def read(path, metapath=None, convert=True, **kwargs):
 
             # If we're interested in non-existent
             # entries, carry on..
-            root = lib.Entry(name, parent=root)
+            root = lib.Entry(current, parent=root)
 
     try:
         pull(root)
@@ -648,7 +621,7 @@ def isentry(node):
 
 
 if __name__ == '__main__':
-    import os
+    # import os
     import doctest
     doctest.testmod()
 
@@ -656,7 +629,9 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    # path = r'c:\users\marcus\om\.meta\test'
+    path = r'c:\users\marcus\om'
     # path = r'S:\content\jobs\machine\appdata\.meta\text.string'
-    path = os.path.expanduser('~')
-    print read(path, 'rootDir.string')
+    entry = convert(r'C:\Users\marcus\.meta\test2.text')
+    print entry.path
+    # entry = read(r'C:\Users\marcus', r'/group3.list/another/more.int')
+    # print split(r'C:\Users\marcus\.meta\group3.list')

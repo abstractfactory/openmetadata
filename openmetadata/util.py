@@ -27,16 +27,22 @@ def split(path):
         >>> split(path)
         ('c:/users/marcus', None)
 
-        # Suffixes are excluded
         >>> path = r'c:\users\marcus\.meta\group.list\special.string'
         >>> split(path)
-        ('c:/users/marcus', '/group/special')
+        ('c:/users/marcus', '/group.list/special.string')
 
     """
 
     assert isinstance(path, basestring)
     path = lib.Path(path)
-    return path.location.as_str, path.meta
+
+    try:
+        path, meta = path.as_raw.split(lib.Path.CONTAINER, 1)
+        path = path[:-1]  # Trailing slash
+    except ValueError:
+        path, meta = path.as_raw, None
+
+    return path, meta
 
 
 def locations(path):

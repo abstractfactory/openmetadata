@@ -510,8 +510,8 @@ if __name__ == '__main__':
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
     # entry = om.Entry('test', parent=location)
-    entry = om.Entry('app.class', parent=location)
-    print entry.path
+    entry = om.Entry('app.string', parent=location)
+    print entry.value
 
     # meta = DefaultPath(r'c:\users') + MetaPath('/test')
     # print meta

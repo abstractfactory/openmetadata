@@ -46,6 +46,10 @@ def exists(path, **kwargs):
     return os.path.exists(path)
 
 
+# def split(path, *args, **kwargs):
+#     return os.path.split(path, *args, **kwargs)
+
+
 def count(path):
     """Return amount of items under `path`"""
     return len(os.listdir(path))

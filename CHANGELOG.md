@@ -1,5 +1,46 @@
 # 0.5.3
 
+### Strict
+
+pull() is more strict, it doesn't assume an alternate suffix when one has been supplied.
+
+```python
+# Pre 0.5.3 - custom.string does not exist, but custom.int does
+>>> entry = Entry('custom.string', parent=location)
+>>> pull(entry)
+# This would pull from custom.int, and implicitly alter the
+# type of `entry`
+
+# New in 0.5.3
+>>> pull(entry)
+error.Exists("custom.string does not exist")
+```
+
+### read() now works with suffixes
+
+In cases where the user wishes to retrieve a specific entry by a specific type, he may now type:
+
+```python
+# This will return the string, only if the specific types exists
+>>> read('/home/marcus', '/my/specific.list/type.string')
+```
+
+### split() now returns suffixes
+
+Before, split returned a pure metapath without suffixes, it is now the users responsibility to strip suffixes from split if so is required.
+
+### convert() now works with suffixes
+
+Before, convert would disregard suffixes in its metapath, resulting in invalid return values when a suffix was included, but not existing.
+
+# If entry.string exists, convert would silently return it
+# and disregard the users request for a .text.
+>>> convert('/home/marcus/.meta/custom/entry.text')
+
+# If the user wishes to get any suffix, he could say..
+>>> convert('/home/marcus/.meta/custom/entry')
+# ..which would return any existing entry, regardless of suffix.
+
 ### Suffix-independend find()
 
 Find is supposed to "find" an entry within a directory, regardless of its suffix, and return the existing one (if one exists):
