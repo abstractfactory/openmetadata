@@ -21,16 +21,16 @@ DefaultPath = path_map[osname]
 MetaPath = path.MetaPath
 
 
-type_to_suffix = {
-    bool:       'bool',
-    int:        'int',
-    float:      'float',
-    str:        'string',
-    unicode:    'string',
-    None:       'null',
-    tuple:      'tuple',
-    list:       'list',
-    dict:       'dict'
+_type_to_suffix = {
+    bool:       ['bool'],
+    int:        ['int'],
+    float:      ['float'],
+    str:        ['string', 'text'],  # text is also valid str
+    unicode:    ['string', 'text'],  # text is also valid unicode
+    None:       ['null'],
+    tuple:      ['tuple'],
+    list:       ['list'],
+    dict:       ['dict']
 }
 
 
@@ -44,6 +44,15 @@ defaults = {
     'list':   [],
     'dict':   {}
 }
+
+
+def type_to_suffix(typ, hint=None):
+    """Return suffix for `typ`, favouring `hint` if possible"""
+    suffixes = _type_to_suffix.get(typ)
+    if hint in suffixes:
+        return hint
+    else:
+        return suffixes[0]
 
 
 class Node(object):
@@ -261,7 +270,7 @@ class Node(object):
         else:
             dt = type(value)
 
-        suffix = type_to_suffix.get(dt)
+        suffix = type_to_suffix(dt, hint=self.path.suffix)
         return self.raw_path.copy(suffix=suffix)
 
     @property
@@ -323,7 +332,8 @@ class Location(Node):
         self._path = DefaultPath(self._path.as_str)
 
         if not self._path.isabsolute:
-            raise error.RelativePath('DefaultPath must be absolute: %s' % self._path)
+            raise error.RelativePath(
+                'DefaultPath must be absolute: %s' % self._path)
 
     @property
     def path(self):
@@ -452,53 +462,6 @@ class Entry(Node):
         assert not isinstance(self.value, dict)
         return json.dumps(self.value)
 
-    # def _dump(self, root):
-    #     result = {}
-    #     for name, entry in root.value.iteritems():
-    #         if entry.isparent:
-    #             if not name in result:
-    #                 result[name] = {}
-    #             result[name] = self._dump(entry)
-    #             continue
-
-    #         result[name] = entry.value
-    #     return result
-
-
-# class Imprint(Group):
-#     def __init__(self, *args, **kwargs):
-#         super(Imprint, self).__init__(*args, **kwargs)
-#         self._time = None
-
-#     @property
-#     def time(self):
-#         """
-#         Return tuple of recorded time.
-
-#         Example
-#             >>> imprint = Imprint('name&20140404-105421')
-#             >>> imprint.time > (2013,)
-#             True
-#             >>> imprint.time > (2015,)
-#             False
-#         """
-
-#         if not self._time:
-
-#             date = self.path.option
-#             year = int(date[:4])
-#             month = int(date[4:6])
-#             day = int(date[6:8])
-
-#             time = date.rsplit("-")[-1]
-#             hour = int(time[:2])
-#             minute = int(time[2:4])
-#             second = int(time[4:])
-
-#             self._time = (year, month, day, hour, minute, second)
-
-#         return self._time
-
 
 if __name__ == '__main__':
     # import doctest
@@ -511,7 +474,8 @@ if __name__ == '__main__':
     location = om.Location(r'C:\Users\marcus\om2')
     # entry = om.Entry('test', parent=location)
     entry = om.Entry('app.string', parent=location)
-    print entry.value
+    entry._path.set(r'PPP.string')
+    print repr(entry.path)
 
     # meta = DefaultPath(r'c:\users') + MetaPath('/test')
     # print meta

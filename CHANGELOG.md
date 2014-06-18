@@ -1,5 +1,17 @@
 # 0.5.3
 
+### Path.set()
+
+Path is now mutable and may be replaced/updated via a call to set(). See docstring for examples.
+
+### Suffix hints
+
+When reading entry.text, the contents is natively unicode. Assigning the content of entry.text to an Entry object would implicitly alter its type to .string, since .string is associated with unicode.
+
+Now, type-conversion have a hint property which may use an existing extension as hint on how to cast.
+
+E.g. `"my string"` -> entry.text will preserve the .text suffix, whereas `True` -> entry.text will cast entry to `bool`
+
 ### Strict
 
 pull() is more strict, it doesn't assume an alternate suffix when one has been supplied.

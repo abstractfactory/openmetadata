@@ -2,6 +2,7 @@
 
 import os
 import time
+import errno
 import shutil
 import __builtin__
 
@@ -123,8 +124,12 @@ def ls(path):
 
 
 def open(path):
-    with __builtin__.open(path, 'r') as f:
-        data = f.read()
+    try:
+        with __builtin__.open(path, 'r') as f:
+            data = f.read()
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            raise error.Exists(path)
     return data
 
 

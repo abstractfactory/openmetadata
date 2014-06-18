@@ -229,11 +229,7 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
             child.isparent = False
 
     else:
-        try:
-            value = service.open(path)
-        except IOError:
-            raise error.Exists(path)
-
+        value = service.open(path)  # raises error.Exists
         node.load(value)
 
     # Continue pulling children until `depth` is reached
@@ -488,43 +484,7 @@ def read(path, metapath=None, convert=True, **kwargs):
 
     location = Location(path)
 
-    root = location
-
-    parts = util.parse_metapath(metapath)
-    while parts:
-        try:
-            pull(root)
-        except error.Exists:
-            if not _return_nonexisting:
-                return None
-
-        current = parts.pop(0)
-        while current == '':
-            current = parts.pop(0)
-
-        # Remove suffix for query
-        try:
-            name, suffix = current.rsplit(lib.Path.EXT, 1)
-        except ValueError:
-            name, suffix = current, None
-
-        try:
-            new_root = root[name]
-            # If metapath included a suffix,
-            # ensure the child we fetch match this suffix.
-            if suffix:
-                if not new_root.path.suffix == suffix:
-                    raise KeyError
-
-            root = new_root
-
-        except KeyError:
-            if not _return_nonexisting:
-                return None
-
-            # If we're interested in non-existent
-            # entries, carry on..
-            root = lib.Entry(current, parent=root)
+    root = entry(location=location, metapath=metapath)
 
     try:
         pull(root)
@@ -575,6 +535,55 @@ def read(path, metapath=None, convert=True, **kwargs):
             #   --> Entry('child')
 
             return root
+
+
+def entry(location, metapath):
+    """Get entry from `metapath` in `location`"""
+
+    if isinstance(location, basestring):
+        location = Location(location)
+
+    root = location
+
+    parts = util.parse_metapath(metapath)
+    while parts:
+        try:
+            pull(root)
+        except error.Exists:
+            # if not _return_nonexisting:
+            #     return None
+            pass
+
+        current = parts.pop(0)
+        while current == '':
+            current = parts.pop(0)
+
+        # Remove suffix for query
+        try:
+            name, suffix = current.rsplit(lib.Path.EXT, 1)
+        except ValueError:
+            name, suffix = current, None
+
+        try:
+            new_root = root[name]
+
+            # If metapath included a suffix,
+            # ensure the child we fetch match this suffix.
+            if suffix:
+                if new_root.path.suffix != suffix:
+                    raise KeyError
+
+            root = new_root
+
+        except KeyError:
+            # if not _return_nonexisting:
+            #     return None
+
+            # If we're interested in non-existent
+            # entries, carry on..
+            root = lib.Entry(current, parent=root)
+
+    return root
 
 
 def write(path, metapath, value=None):
@@ -631,7 +640,9 @@ if __name__ == '__main__':
 
     path = r'c:\users\marcus\om'
     # path = r'S:\content\jobs\machine\appdata\.meta\text.string'
-    entry = convert(r'C:\Users\marcus\.meta\test2.text')
-    print entry.path
+    # entry_ = convert(r'C:\Users\marcus\.meta\testx.string')
+    entry_ = entry(path, 'test4.string')
+    print entry_.path
+    print service.exists(entry_.path.as_str)
     # entry = read(r'C:\Users\marcus', r'/group3.list/another/more.int')
     # print split(r'C:\Users\marcus\.meta\group3.list')

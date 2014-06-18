@@ -61,11 +61,6 @@ class Path(object):
     def __repr__(self):
         return u"%s(%r)" % (self.__class__.__name__, self.__str__())
 
-    # def __iter__(self):
-    #     """Emulate iterating over a regular string"""
-    #     for char in self.as_str:
-    #         yield char
-
     def __hash__(self):
         return hash(self.as_str)
 
@@ -106,6 +101,27 @@ class Path(object):
         # Memoized attributes
         self.__as_raw = None
         self.__as_str = None
+
+    def set(self, path):
+        """Replace current path with `path`
+
+        Example:
+            # General usage
+            >>> path = Path('/home/marcus')
+            >>> path.set('/home/lukas')
+            >>> str(path)
+            '/home/lukas'
+
+            # Type is maintained
+            >>> path = WindowsPath(r'c:\users\marcus')
+            >>> path.set(r'c:\users\lukas')
+            >>> path.__class__.__name__
+            'WindowsPath'
+
+        """
+        print "Path: before = %s" % self._path
+        self._path = type(self)(path)._path
+        print "Path: after = %s" % self._path
 
     def copy(self, path=None, basename=None, suffix=None):
         """
@@ -470,11 +486,10 @@ class Path(object):
     @property
     def as_raw(self):
         """Return string without deparsing"""
-        if not self.__as_raw:
-            self.__as_raw = self._path
-            if self.hasoption:
-                self.__as_raw += self.OPTSEP + self.__option
-        return self.__as_raw
+        as_raw = self._path
+        if self.hasoption:
+            as_raw += self.OPTSEP + self.__option
+        return as_raw
 
     @property
     def as_str(self):
@@ -490,11 +505,10 @@ class Path(object):
             '/root/child'
         """
 
-        if not self.__as_str:
-            self.__as_str = self.deparse()
-            if self.hasoption:
-                self.__as_str += self.OPTSEP + self.__option
-        return self.__as_str
+        as_str = self.deparse()
+        if self.hasoption:
+            self.__as_str += self.OPTSEP + self.__option
+        return as_str
 
     @property
     def isabsolute(self):
@@ -588,13 +602,15 @@ class MetaPath(DirPath):
 
 
 if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
-
     import openmetadata as om
     om.setup_log()
 
-    # path = Path('/root/.meta/child.ext&opt')
+    import doctest
+    doctest.testmod()
+
+    path = Path('/root/.meta/child.ext')
+    path.set('/home/marcus')
+    print path
     # path = WindowsPath(r'c:\users')
     # path = Path(r'c:\users\marcus\.meta')
     # print path.suffix
