@@ -31,12 +31,6 @@ class Path(object):
     |__________|      |_________|
 
 
-    Path Structure
-
-        [path]&[option]
-
-        /root/child&options_here
-
     """
 
     log = logging.getLogger('openmetadata.path.Path')
@@ -92,15 +86,9 @@ class Path(object):
         assert isinstance(path, basestring), path
 
         path = self.parse(path)
-        path, option = self.splitoption(path)
 
         self._path = path
         self.__suffix = None
-        self.__option = option
-
-        # Memoized attributes
-        self.__as_raw = None
-        self.__as_str = None
 
     def set(self, path):
         """Replace current path with `path`
@@ -119,9 +107,7 @@ class Path(object):
             'WindowsPath'
 
         """
-        print "Path: before = %s" % self._path
         self._path = type(self)(path)._path
-        print "Path: after = %s" % self._path
 
     def copy(self, path=None, basename=None, suffix=None):
         """
@@ -204,31 +190,6 @@ class Path(object):
         path_ = '/'.join(parts)
 
         return path_
-
-    @classmethod
-    def splitoption(cls, path):
-        """
-        Example
-            >>> path = Path('/home/marcus&options')
-            >>> path.option
-            'options'
-            >>> path = Path('test&options')
-            >>> path.option
-            'options'
-        """
-
-        parts = path.split(cls.PROCSEP)
-        basename = parts.pop()
-
-        try:
-            basename, option = basename.split(cls.OPTSEP)
-        except:
-            option = None
-
-        parts.append(basename)
-        path = cls.PROCSEP.join(parts)
-
-        return path, option
 
     def deparse(self):
         """
@@ -319,19 +280,6 @@ class Path(object):
             metapath += '/' + part.split(self.EXT, 1)[0]
 
         return metapath
-
-    @property
-    def option(self):
-        """Return part of path following `OPTSEP`
-
-        Example
-            >>> path = Path('/root/child&2013-04')
-            >>> path.option
-            '2013-04'
-
-        """
-
-        return self.__option
 
     @property
     def location(self):
@@ -448,34 +396,25 @@ class Path(object):
             >>> path.suffix
             'ext'
 
-            >>> path = Path('/root/child.ext&with_options')
-            >>> path.suffix
-            'ext'
-
-            >>> path = Path('/root/.meta/child.ext&opt/name')
-            >>> path.suffix
-
-            >>> path = Path('/root/.meta/child.ext&opt/name.ext')
-            >>> path.suffix
-            'ext'
-
             >>> path = Path(r'c:\users\marcus\.meta')
             >>> path.suffix
 
 
         """
 
-        if not self.__suffix:
-            basename = self._path.rsplit(self.PROCSEP, 1)[-1]
+        suffix = None
 
-            if basename == self.CONTAINER:
-                return None
+        basename = self._path.rsplit(self.PROCSEP, 1)[-1]
 
-            match = self.SuffixPattern.search(basename)
-            if match:
-                # Disregard the "."
-                self.__suffix = match.group(0)[1:]
-        return self.__suffix
+        if basename == self.CONTAINER:
+            return None
+
+        match = self.SuffixPattern.search(basename)
+        if match:
+            # Disregard the "."
+            suffix = match.group(0)[1:]
+
+        return suffix
 
     def startswith(self, predicate):
         return self.as_str.startswith(predicate)
@@ -487,8 +426,6 @@ class Path(object):
     def as_raw(self):
         """Return string without deparsing"""
         as_raw = self._path
-        if self.hasoption:
-            as_raw += self.OPTSEP + self.__option
         return as_raw
 
     @property
@@ -496,7 +433,7 @@ class Path(object):
         """Return the composed version of `path`
 
         Example
-            >>> input_value = '/root/child&options_here'
+            >>> input_value = '/root/child'
             >>> path = Path(input_value)
             >>> return_value = input_value
             >>> path.as_str == return_value
@@ -505,10 +442,7 @@ class Path(object):
             '/root/child'
         """
 
-        as_str = self.deparse()
-        if self.hasoption:
-            self.__as_str += self.OPTSEP + self.__option
-        return as_str
+        return self.deparse()
 
     @property
     def isabsolute(self):
@@ -521,10 +455,6 @@ class Path(object):
     @property
     def isroot(self):
         return True if self._path == '/' else False
-
-    @property
-    def hasoption(self):
-        return self.__option is not None
 
 
 class DirPath(Path):

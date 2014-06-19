@@ -200,9 +200,6 @@ class Node(object):
         path = child.raw_path
         key = path.name
 
-        if path.hasoption:
-            key += path.OPTSEP + path.option
-
         self._value[key] = child
         child._parent.append(self)
 
