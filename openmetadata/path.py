@@ -96,6 +96,8 @@ class Path(object):
         Example:
             # General usage
             >>> path = Path('/home/marcus')
+            >>> path.as_str
+            '/home/marcus'
             >>> path.set('/home/lukas')
             >>> str(path)
             '/home/lukas'
@@ -107,6 +109,11 @@ class Path(object):
             'WindowsPath'
 
         """
+
+        # Clear memoized cache
+        if hasattr(self, '_as_str'):
+            delattr(self, '_as_str')
+
         self._path = type(self)(path)._path
 
     def copy(self, path=None, basename=None, suffix=None):
@@ -425,8 +432,7 @@ class Path(object):
     @property
     def as_raw(self):
         """Return string without deparsing"""
-        as_raw = self._path
-        return as_raw
+        return self._path
 
     @property
     def as_str(self):
@@ -442,7 +448,10 @@ class Path(object):
             '/root/child'
         """
 
-        return self.deparse()
+        if not hasattr(self, '_as_str'):
+            self._as_str = self.deparse()
+
+        return self._as_str
 
     @property
     def isabsolute(self):
