@@ -62,18 +62,11 @@ Find is supposed to "find" an entry within a directory, regardless of its suffix
 'myentry.bool'
 ```
 
-However, when querying by a specific suffix, it couldn't properly do its job.
+However, when a specific suffix is included, it is respected.
 
 ```python
 >>> om.find('/home/marcus', 'myentry.int')
 None
-```
-
-In 0.5.3, it does.
-
-```python
->>> om.find('/home/marcus', 'myentry.int')
-'myentry.bool'
 ```
 
 ### No more name-conflicts

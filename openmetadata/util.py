@@ -75,9 +75,19 @@ def parse_metapath(metapath):
 
 
 def find_all(path, name, **kwargs):
-    """Find `name` in `path`, regardless of suffix
+    """Find `name` in `path`
 
-    Return relative path to found entry
+    Suffix:
+        If no suffix is supplied with `name`, suffixes are
+        ignored. E.g. this will return `myname.bool` if such
+        an entry exists.
+            >> find(path, 'myname')
+
+        However, this will not
+            >> find(path, 'myname.int')
+
+    Returns:
+        Relative path to found entry
 
     Example
         Given the directory:
@@ -90,10 +100,10 @@ def find_all(path, name, **kwargs):
         >> find(path, 'entry3')
         'entry3.bool'
 
-        Ignore suffix
+        Respect suffix
 
         >> find(path, 'entry3.int')
-        'entry3.bool'
+        None
 
     """
 
@@ -101,8 +111,12 @@ def find_all(path, name, **kwargs):
         return
 
     # Ignore suffix
+    suffix = None
     if not name.startswith('.'):
-        name = name.split(lib.Path.EXT, 1)[0]
+        try:
+            name, suffix = name.split(lib.Path.EXT, 1)
+        except ValueError:
+            pass
 
     # Hidden arguments
     ignore_case = kwargs.get('ignore_case', True)
@@ -122,19 +136,25 @@ def find_all(path, name, **kwargs):
     for entry in dirs_ + files_:
 
         if entry.startswith('.'):
-            entry_no_suffix = entry
+            search_name = entry
+            search_suffix = None
         else:
             try:
-                entry_no_suffix, _ = entry.rsplit(lib.Path.EXT, 1)
+                search_name, search_suffix = entry.rsplit(lib.Path.EXT, 1)
             except ValueError:
-                entry_no_suffix = entry
+                search_name, search_suffix = entry, None
 
         if ignore_case:
             name = name.lower()
-            entry_no_suffix = entry_no_suffix.lower()
+            search_name = search_name.lower()
 
-        if entry_no_suffix == name:
-            yield entry
+        if search_name == name:
+            # If there was a suffix supplied, ensure they match
+            if suffix:
+                if search_suffix == suffix:
+                    yield entry
+            else:
+                yield entry
 
 
 def find(path, name):
@@ -155,5 +175,5 @@ if __name__ == '__main__':
     doctest.testmod()
 
     import os
-    home = os.path.expanduser('~/om/.trash')
-    print find(home, '.meta')
+    home = os.path.expanduser('~/om')
+    print find(home, 'address')
