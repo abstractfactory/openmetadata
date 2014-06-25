@@ -263,7 +263,7 @@ class Node(object):
 
     def _resolve_suffix(self, value=None):
         if value is None:
-            dt = None
+            return self._path
         else:
             dt = type(value)
 
@@ -457,7 +457,10 @@ class Entry(Node):
     def dump(self):
         """Serialise contents of `self`"""
         assert not isinstance(self.value, dict)
-        return json.dumps(self.value)
+        value = self.value
+        if value is None:
+            return None
+        return json.dumps(value)
 
 
 if __name__ == '__main__':
@@ -470,8 +473,7 @@ if __name__ == '__main__':
     # Starting-point
     location = om.Location(r'C:\Users\marcus\om2')
     # entry = om.Entry('test', parent=location)
-    entry = om.Entry('app.string', parent=location)
-    entry._path.set(r'PPP.string')
+    entry = om.Entry('app.class', parent=location)
     print repr(entry.path)
 
     # meta = DefaultPath(r'c:\users') + MetaPath('/test')

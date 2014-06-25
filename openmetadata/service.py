@@ -138,6 +138,9 @@ def flush(path, data):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
+    if data is None:
+        data = ''
+
     with __builtin__.open(path, 'w') as f:
         f.write(data)
 

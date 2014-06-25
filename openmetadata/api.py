@@ -199,12 +199,25 @@ def flush(node, track_history=True, simulate=False):
 
 
 def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
-    """Physically retrieve value from datastore
+    """Physically retrieve value from datastore.
 
     Parameters
-        lazy        -- Only pull if no existing value already exists
-        depth       -- Pull `node` and `depth` levels of children
-        merge       -- Combine results with existing value of `node`
+    ----------
+    lazy : bool
+        Only pull if no existing value already exists
+    depth : int
+        Pull `node` and `depth` levels of children
+    merge : bool
+        Combine results with existing value of `node`
+
+    Raises
+    ------
+    error.Exists
+
+    Returns
+    -------
+    Node
+        The originally passed node
 
     """
 
@@ -638,11 +651,8 @@ if __name__ == '__main__':
     import openmetadata as om
     om.setup_log('openmetadata')
 
-    path = r'c:\users\marcus\om'
-    # path = r'S:\content\jobs\machine\appdata\.meta\text.string'
-    # entry_ = convert(r'C:\Users\marcus\.meta\testx.string')
-    entry_ = entry(path, 'test4.string')
-    print entry_.path
-    print service.exists(entry_.path.as_str)
-    # entry = read(r'C:\Users\marcus', r'/group3.list/another/more.int')
-    # print split(r'C:\Users\marcus\.meta\group3.list')
+    location = om.Location(r'C:\Users\marcus')
+    # entry = om.Entry('test', parent=location)
+    entry = om.Entry('Test.class', parent=location)
+    pull(entry)
+    print repr(entry.path)
