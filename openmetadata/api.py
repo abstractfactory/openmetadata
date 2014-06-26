@@ -237,7 +237,10 @@ def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
 
     else:
         value = service.open(path)  # raises error.Exists
-        node.load(value)
+
+        # Empty files return an emptry string
+        if value != "":
+            node.load(value)
 
     # Continue pulling children until `depth` is reached
     if _currentlevel < depth:

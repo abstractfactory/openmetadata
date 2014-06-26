@@ -453,6 +453,7 @@ class Entry(Node):
         except ValueError:
             LOG.warning("%s contains invalid value" % self.path)
             self.value = value
+            raise
 
     def dump(self):
         """Serialise contents of `self`"""

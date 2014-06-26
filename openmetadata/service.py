@@ -130,6 +130,7 @@ def open(path):
     except IOError as e:
         if e.errno == errno.ENOENT:
             raise error.Exists(path)
+
     return data
 
 

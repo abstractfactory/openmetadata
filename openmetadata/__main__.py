@@ -26,15 +26,35 @@ log.setLevel(logging.WARNING)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('metapath')
-parser.add_argument('--value', default=None)
+parser.add_argument('--value', default='')
 parser.add_argument('--root', default=os.getcwd())
 
 args = parser.parse_args()
 
-if args.value is not None:
+value = args.value
+
+# Cast input
+
+try:
+    value = float(value)
+except:
+    pass
+
+if value == 'None':
+    value = None
+
+elif value == 'True':
+    value = True
+
+elif value == 'False':
+    value = False
+
+
+if args.value is not '':
+    print "Value is %r" % value
     openmetadata.write(path=args.root,
                        metapath=args.metapath,
-                       value=args.value)
+                       value=value)
     sys.stdout.write("Success")
 
 else:
