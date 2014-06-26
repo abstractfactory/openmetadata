@@ -4,6 +4,7 @@ See help(openmetadata) for more information
 """
 
 import logging
+import getpass
 
 from openmetadata import lib
 from openmetadata import util
@@ -108,15 +109,12 @@ def flush(node, track_history=True, simulate=False):
         Finally, commit the values to disk.
 
     Args:
-        node: Node to flush
-        track_history (bool): Produce history of `node`
-        simulate (bool): Do not actually write anything (NotImplemented)
+        node (Node): Node to flush
+        track_history (bool, optional): Produce history of `node`
+        simulate (bool, optional): Do not actually write anything (NotImplemented)
 
     Returns:
         Node: Unmodified
-
-    Raises:
-
 
 
     """
@@ -176,10 +174,6 @@ def flush(node, track_history=True, simulate=False):
 
         for child in node:
             flush(child, track_history, simulate)
-
-        if existing_node:
-            log.warning("Flushed a folder of "
-                        "new suffix, be careful: %r" % node.path.as_str)
 
     else:
         if not node.type:
@@ -345,7 +339,7 @@ def _make_history(node):
     history = Entry('.history', parent=parent)
     imprint = Entry(imprint_name, parent=history)
 
-    Entry('user.string', value='marcus', parent=imprint)
+    Entry('user.string', value=getpass.getuser(), parent=imprint)
     Entry('value', value=old_value, parent=imprint)
 
     flush(history, track_history=False)
@@ -615,10 +609,10 @@ def write(path, metapath, value=None):
         entry = Entry(entry_name, parent=root)
         root = entry
 
+
     # If no suffix was specified, initialise a default suffix
     # based on `value`
-    if not root.path.suffix:
-        root.value = value
+    root.value = value
 
     assert root.type
 
