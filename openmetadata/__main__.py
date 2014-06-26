@@ -51,7 +51,6 @@ elif value == 'False':
 
 
 if args.value is not '':
-    print "Value is %r" % value
     openmetadata.write(path=args.root,
                        metapath=args.metapath,
                        value=value)

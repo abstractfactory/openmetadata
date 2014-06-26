@@ -416,7 +416,7 @@ class Entry(Node):
     @value.setter
     def value(self, value):
         self._path = self._resolve_suffix(value)
-        assert self.path.suffix
+        assert self.path.suffix, self.path.as_str
 
         # Reset isparent flag.
         #
@@ -453,7 +453,6 @@ class Entry(Node):
         except ValueError:
             LOG.warning("%s contains invalid value" % self.path)
             self.value = value
-            raise
 
     def dump(self):
         """Serialise contents of `self`"""

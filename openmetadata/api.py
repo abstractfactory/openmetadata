@@ -337,13 +337,14 @@ def _make_history(node):
     # Get previous value
     pull(copy, lazy=True)
     old_value = pull(copy).value
+    old_suffix = copy.path.suffix
 
     # Construct history group
     history = Entry('.history', parent=parent)
     imprint = Entry(imprint_name, parent=history)
 
     Entry('user.string', value=getpass.getuser(), parent=imprint)
-    Entry('value', value=old_value, parent=imprint)
+    Entry('value.{}'.format(old_suffix), value=old_value, parent=imprint)
 
     flush(history, track_history=False)
 
