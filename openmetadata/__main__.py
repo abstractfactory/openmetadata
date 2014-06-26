@@ -13,6 +13,14 @@ Example:
     $ openmetadata message --root="/home/marcus"
     Hello World
 
+Datatypes:
+    As inpute from the command-line is all strings, certain types are
+    automatically cast to their relevant types. Those are:
+
+    - bool
+    - None
+    - int/float
+
 """
 
 import os
