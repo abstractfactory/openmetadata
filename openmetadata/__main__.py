@@ -1,69 +1,18 @@
-"""Open Metadata Command-line Interface
+"""Open Metadata package interface
 
-The command-line interface for Open Metadata. It operates on the
-current working directory per default, but can be overridden via
-the `root` flag. See example below.
-
-Example:
-    $ cd /home/marcus
-    $ openmetadata message --value="Hello World"
-    $ openmetadata message
-    Hello World
-    $ openmetadata message --value="Hello World" --root="/home/marcus"
-    $ openmetadata message --root="/home/marcus"
-    Hello World
-
-Datatypes:
-    As inpute from the command-line is all strings, certain types are
-    automatically cast to their relevant types. Those are:
-
-    - bool
-    - None
-    - int/float
+This makes the Open Metadata package into an executable, via cli.py
 
 """
 
-import os
-import sys
 import logging
-import argparse
 import openmetadata
+import openmetadata.cli
 
-log = openmetadata.setup_log()
-log.setLevel(logging.WARNING)
+if __name__ == '__main__':
+    log = openmetadata.setup_log()
+    log.setLevel(logging.WARNING)
+    args = openmetadata.cli.parser.parse_args()
 
-parser = argparse.ArgumentParser()
-parser.add_argument('metapath')
-parser.add_argument('--value', default='')
-parser.add_argument('--root', default=os.getcwd())
-
-args = parser.parse_args()
-
-value = args.value
-
-# Cast input
-
-try:
-    value = float(value)
-except:
-    pass
-
-if value == 'None':
-    value = None
-
-elif value == 'True':
-    value = True
-
-elif value == 'False':
-    value = False
-
-
-if args.value is not '':
-    openmetadata.write(path=args.root,
-                       metapath=args.metapath,
-                       value=value)
-    sys.stdout.write("Success")
-
-else:
-    print openmetadata.read(path=args.root,
-                            metapath=args.metapath)
+    openmetadata.cli.main(metapath=args.metapath,
+                          value=args.value,
+                          root=args.root)
