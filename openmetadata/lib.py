@@ -121,8 +121,6 @@ class Node(object):
             path = Path(path)
 
         self._path = path
-        self._type = None  # cache
-        self._suffix = None  # cache
         self._isvalid = None
 
         self._value = value
@@ -189,10 +187,7 @@ class Node(object):
 
         """
 
-        if not self._type:
-            self._type = self.path.suffix
-
-        return self._type
+        return self.path.suffix
 
     def add(self, child):
         if not isinstance(self._value, dict):
