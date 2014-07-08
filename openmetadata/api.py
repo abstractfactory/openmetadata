@@ -61,7 +61,8 @@ __all__ = [
     # 'history',
     # 'restore',
     'islocation',
-    'isentry'
+    'isentry',
+    'error'
 ]
 
 # ---------------------------------------------------------------------
@@ -195,23 +196,16 @@ def flush(node, track_history=True, simulate=False):
 def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
     """Physically retrieve value from datastore.
 
-    Parameters
-    ----------
-    lazy : bool
-        Only pull if no existing value already exists
-    depth : int
-        Pull `node` and `depth` levels of children
-    merge : bool
-        Combine results with existing value of `node`
+    Arguments:
+        lazy (bool): Only pull if no existing value already exists
+        depth (int): Pull `node` and `depth` levels of children
+        merge (bool): Combine results with existing value of `node`
 
-    Raises
-    ------
-    error.Exists
+    Raises:
+        error.Exists
 
-    Returns
-    -------
-    Node
-        The originally passed node
+    Returns:
+        Node: The originally passed node
 
     """
 
@@ -640,17 +634,18 @@ def isentry(node):
     return isinstance(node, lib.Entry)
 
 
-if __name__ == '__main__':
-    # import os
-    import doctest
-    doctest.testmod()
+# if __name__ == '__main__':
+#     # import os
+#     import doctest
+#     doctest.testmod()
 
-    # from pprint import pprint
-    import openmetadata as om
-    om.setup_log('openmetadata')
+#     # from pprint import pprint
+#     import openmetadata as om
+#     om.setup_log('openmetadata')
 
-    location = om.Location(r'C:\Users\marcus')
-    # entry = om.Entry('test', parent=location)
-    entry = om.Entry('Test.class', parent=location)
-    pull(entry)
-    print repr(entry.path)
+#     location = om.Location(r'C:\Users\marcus')
+#     # entry = om.Entry('test', parent=location)
+#     entry = om.Entry('Test.class', parent=location)
+#     pull(entry)
+#     print repr(entry.path)
+# # 

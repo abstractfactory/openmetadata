@@ -1,54 +1,24 @@
-"""
------------------------------------------------------------------------
+"""Open Metadata API
 
-Open Metadata API
+The Open Metadata technology is designed to organize, store,
+discover, access, analyze, share, and preserve diverse, complex
+data in continuously evolving heterogeneous computing and
+storage environments.
 
------------------------------------------------------------------------
+The implementation you are reading about right now is LGPLv3
+licensed software, however Open Metadata itself is language- and
+implementation-agnostic and may come to support several other
+languages.
 
-Description
-    The Open Metadata technology is designed to organize, store,
-    discover, access, analyze, share, and preserve diverse, complex
-    data in continuously evolving heterogeneous computing and
-    storage environments.
-
-    The implementation you are reading about right now is LGPLv3
-    licensed software, however Open Metadata itself is language- and
-    implementation-agnostic and may come to support several other
-    languages.
-
-Functionality
-
-    Main
-    ----------------------
-
-    flush           -- Write to datastore
-    remove          -- Remove from datastore
-    find            -- Return first match
-    pull            -- Read from datastore
-    inherit         -- Read cascading from datastore
-
-    Convenience
-    ----------------------
-
-    read            -- Convenience method for reading metadata
-    write           -- Convenience method for writing metadata
-    ls              -- List metacontent of node
-
-
-Usage
-
-    >> import openmetadata as om
-    >> om.read('/home/marcus')
-
-Version
-
-    >>> import openmetadata as om
-    >>> om.version
-    '0.1.0'
-    >>> om.version_info
-    (0, 1, 0)
-    >>> om.version_info > (0, 2, 0)
-    False
+Members:
+    flush:    Write to datastore
+    remove:   Remove from datastore
+    find:     Return first match
+    pull:     Read from datastore
+    inherit:  Read cascading from datastore
+    read:     Convenience method for reading metadata
+    write:    Convenience method for writing metadata
+    ls:       List metacontent of node
 
 
 """
@@ -57,10 +27,9 @@ Version
 import logging
 
 # from openmetadata import lib
-from openmetadata import error
+# from openmetadata import error
 from openmetadata.api import *
 from openmetadata.version import *
-
 
 
 def get_formatter():

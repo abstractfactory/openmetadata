@@ -1,6 +1,7 @@
 import abc
 import json
 import logging
+import warnings
 
 from openmetadata import path
 from openmetadata import error
@@ -10,7 +11,7 @@ HISTORY = '.history'
 VERSIONS = '.versions'
 TRASH = '.trash'
 
-LOG = logging.getLogger('openmetadata.lib')
+log = logging.getLogger('openmetadata.lib')
 
 osname = service.OSNAME
 path_map = {'nt': path.WindowsPath,
@@ -281,9 +282,24 @@ class Node(object):
 
         """
 
+        warnings.warn("This has been reprecated in favour of isgroup",
+                      DeprecationWarning)
+
         if self._isparent is None:
             return isinstance(self._value, dict)
         return self._isparent
+
+    @property
+    def isgroup(self):
+        """Transitioning to isgroup over isparent"""
+        if self._isparent is None:
+            return isinstance(self._value, dict)
+        return self._isparent
+
+    @isgroup.setter
+    def isgroup(self, value):
+        """Manually specify if object is a collection"""
+        self._isparent = value
 
     @isparent.setter
     def isparent(self, value):
@@ -319,7 +335,7 @@ class Location(Node):
 
     """
 
-    LOG = logging.getLogger('openmetadata.lib.Location')
+    log = logging.getLogger('openmetadata.lib.Location')
 
     def __init__(self, *args, **kwargs):
         super(Location, self).__init__(*args, **kwargs)
@@ -350,6 +366,10 @@ class Location(Node):
 
     @property
     def isparent(self):
+        return True
+
+    @property
+    def isgroup(self):
         return True
 
     @property
@@ -451,8 +471,8 @@ class Entry(Node):
         try:
             self.value = json.loads(value)
         except ValueError:
-            LOG.warning("%s contains invalid value" % self.path)
-            self.value = value
+            log.warning("%s contains invalid value" % self.path)
+            self.value = None
 
     def dump(self):
         """Serialise contents of `self`"""
@@ -463,18 +483,18 @@ class Entry(Node):
         return json.dumps(value)
 
 
-if __name__ == '__main__':
-    # import doctest
-    # doctest.testmod()
+# if __name__ == '__main__':
+#     # import doctest
+#     # doctest.testmod()
 
-    import openmetadata as om
-    om.setup_log('openmetadata')
+#     import openmetadata as om
+#     om.setup_log('openmetadata')
 
-    # Starting-point
-    location = om.Location(r'C:\Users\marcus\om2')
-    # entry = om.Entry('test', parent=location)
-    entry = om.Entry('app.class', parent=location)
-    print repr(entry.path)
+#     # Starting-point
+#     location = om.Location(r'C:\Users\marcus\om2')
+#     # entry = om.Entry('test', parent=location)
+#     entry = om.Entry('app.class', parent=location)
+#     print repr(entry.path)
 
-    # meta = DefaultPath(r'c:\users') + MetaPath('/test')
-    # print meta
+#     # meta = DefaultPath(r'c:\users') + MetaPath('/test')
+#     # print meta

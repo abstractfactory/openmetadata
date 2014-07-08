@@ -116,8 +116,14 @@ def push():
 
 
 def ls(path):
-    """Retrieve remotely-stored data"""
-    if not os.path.exists(path):
+    """Retrieve remotely-stored data
+
+    Arguments:
+        path (str): Absolute path from which to return nodes
+
+    """
+
+    if not os.path.isdir(path):
         raise error.Exists(path)
     for _, dirs, files in os.walk(path):
         return dirs, files
@@ -127,11 +133,12 @@ def open(path):
     try:
         with __builtin__.open(path, 'r') as f:
             data = f.read()
+        return data
     except IOError as e:
         if e.errno == errno.ENOENT:
             raise error.Exists(path)
-
-    return data
+        else:
+            raise
 
 
 def flush(path, data):
