@@ -125,8 +125,12 @@ def ls(path):
 
     if not os.path.isdir(path):
         raise error.Exists(path)
+
+    dirs, files = list(), list()
     for _, dirs, files in os.walk(path):
-        return dirs, files
+        break
+
+    return dirs, files
 
 
 def open(path):
@@ -137,6 +141,10 @@ def open(path):
     except IOError as e:
         if e.errno == errno.ENOENT:
             raise error.Exists(path)
+        elif e.errno == errno.EACCES:
+            raise error.Exists("Make sure this is a file "
+                               "and that you have the appropriate "
+                               "permissions: {}".format(path))
         else:
             raise
 

@@ -1,3 +1,21 @@
+"""Open Metadata object model
+
+The Object Model has no concept of a data-store and
+can thus not directly query or manipulate it. All
+communication between the objects contained within
+and a data-store is performed via :mod:`.api.py`
+
+Attributes:
+    HISTORY: Name of hidden folder containing history
+    VERSIONS: Same as above but for versions
+    TRASH: Same as above but for trash
+
+    defaults: When an entry is given a suffix with no
+        value, a default value is assigned. These are
+        those default values.
+
+"""
+
 import abc
 import json
 import logging
@@ -56,10 +74,20 @@ def type_to_suffix(typ, hint=None):
         return suffixes[0]
 
 
-class Node(object):
+class Resource(object):
+    """Lowest-level representation of any resource, both
+    files and folders but also any metadata
+
+    Arguments:
+        path (str): Absolute or relative path to resource
+        value (object, optional): Contained value of any (supported) type
+        parent (Resource, optional): Parent of resource. Parents
+            are used to hierarchically organise resources.
+
+    """
 
     __metaclass__ = abc.ABCMeta
-    log = logging.getLogger('openmetadata.lib.Node')
+    log = logging.getLogger('openmetadata.lib.Resource')
 
     def __iter__(self):
         value = self._value
@@ -83,7 +111,7 @@ class Node(object):
 
     def __getitem__(self, item):
         try:
-            if not self.isparent:
+            if not self.type in ('dict', 'list'):
                 raise KeyError
             if self._value is None:
                 raise KeyError
@@ -125,7 +153,7 @@ class Node(object):
 
         self._value = value
         self._parent = []
-        self._isparent = None
+        # self._isparent = None
         self.isdirty = False
         self._mro = [self]
 
@@ -160,15 +188,17 @@ class Node(object):
 
     @property
     def mro(self):
-        return self._mro
+        """This will facilitate modifying the inheritance
+        tree from which cascading metadata is drawn"""
+        raise NotImplementedError
 
     @property
     def location(self):
         """Return location of `self`
 
-        Note that the location is the top-most parent
-        of metadata and may not be equivalent to the
-        result of .parent
+        Any resource is either a Location or a child
+        of one. In the latter case, this method retrieves
+        its Location object.
 
         This is primarily a convenience property.
 
@@ -200,11 +230,20 @@ class Node(object):
         child._parent.append(self)
 
     def copy(self, path=None, deep=False, parent=None):
+        """Create copy of self, based on optional modifications
+
+        Arguments:
+            path (str): Copy with an alternative path
+            deep (bool): Copy self as well as children of self
+            parent (Resource): Copy and move to a different parent
+
+        """
+
         path = path or self.raw_path
         copy = self.__class__(path, parent=parent)
 
         # Perform a deep copy, including all children
-        if self.isparent:
+        if self.type in ('dict', 'list'):
             if deep:
                 for _, value in self._value.iteritems():
                     value.copy(deep=True, parent=copy)
@@ -233,9 +272,9 @@ class Node(object):
         """List contained children"""
         tree = '\t' * _level + self.path.name + '\n'
 
-        if self.isparent:
-            for node in self:
-                tree += node.ls(_level + 1)
+        if self.type in ('dict', 'list'):
+            for resource in self:
+                tree += resource.ls(_level + 1)
 
         return tree
 
@@ -266,44 +305,44 @@ class Node(object):
         suffix = type_to_suffix(dt, hint=self.path.suffix)
         return self.raw_path.copy(suffix=suffix)
 
-    @property
-    def isparent(self):
-        """`self` contains one or more entrys
+    # @property
+    # def isparent(self):
+    #     """`self` contains one or more entrys
 
-        Description
-            A Entry containing other entrys is referred
-            to as a collection; on a file-system, a collection
-            represents a folder. Non-collections are then files.
+    #     Description
+    #         A Entry containing other entrys is referred
+    #         to as a collection; on a file-system, a collection
+    #         represents a folder. Non-collections are then files.
 
-        """
+    #     """
 
-        warnings.warn("This has been reprecated in favour of isgroup",
-                      DeprecationWarning)
+    #     warnings.warn("This has been reprecated in favour of isgroup",
+    #                   DeprecationWarning)
 
-        if self._isparent is None:
-            return isinstance(self._value, dict)
-        return self._isparent
+    #     if self._isparent is None:
+    #         return isinstance(self._value, dict)
+    #     return self._isparent
 
-    @property
-    def isgroup(self):
-        """Transitioning to isgroup over isparent"""
-        if self._isparent is None:
-            return isinstance(self._value, dict)
-        return self._isparent
+    # @property
+    # def isgroup(self):
+    #     """Transitioning to isgroup over isparent"""
+    #     if self._isparent is None:
+    #         return isinstance(self._value, dict)
+    #     return self._isparent
 
-    @isgroup.setter
-    def isgroup(self, value):
-        """Manually specify if object is a collection"""
-        self._isparent = value
+    # @isgroup.setter
+    # def isgroup(self, value):
+    #     """Manually specify if object is a collection"""
+    #     self._isparent = value
 
-    @isparent.setter
-    def isparent(self, value):
-        """Manually specify if object is a collection"""
-        self._isparent = value
+    # @isparent.setter
+    # def isparent(self, value):
+    #     """Manually specify if object is a collection"""
+    #     self._isparent = value
 
     @property
     def haschildren(self):
-        return self.isparent and self._value
+        return self.type in ('dict', 'list') and self._value
 
     @property
     def hasvalue(self):
@@ -314,7 +353,7 @@ class Node(object):
         return self.parent is not None
 
 
-class Location(Node):
+class Location(Resource):
     """
     .    ____
     |   |    |
@@ -359,20 +398,20 @@ class Location(Node):
         """Based on HDF5 flush; calls upon separate mechanisms"""
         raise NotImplementedError
 
-    @property
-    def isparent(self):
-        return True
+    # @property
+    # def isparent(self):
+    #     return True
 
-    @property
-    def isgroup(self):
-        return True
+    # @property
+    # def isgroup(self):
+    #     return True
 
     @property
     def hasparent(self):
         return True
 
 
-class Entry(Node):
+class Entry(Resource):
     """
      ____
     |____|______
@@ -438,7 +477,7 @@ class Entry(Node):
         # Whether or not `self` is capable of being a parent is
         # henceforth determined by its corresponding value.
         #
-        self._isparent = None
+        # self._isparent = None
 
         # Values are always overridden.
         self.clear()

@@ -1,5 +1,13 @@
-"""
+"""api.py provides package-level access to all supported
+facilities of Open Metadata.
+
 See help(openmetadata) for more information
+
+Attributes:
+    Path: OS-dependent path-manipulation object
+    Resource: Shorthand for superclass access
+    Location: Folder represention
+    Entry: Metadata representation
 
 """
 
@@ -18,7 +26,7 @@ log = logging.getLogger('openmetadata.api')
 
 """
 
-Node        -- Superclass to every other object in OM
+Resource     -- Superclass to every other object in OM
 Location    -- Path to which metadata is associated
 Entry       -- Dynamically typed metadata entry
 Path
@@ -26,7 +34,7 @@ Path
 """
 
 Path = lib.Path
-Node = lib.Node
+Resource = lib.Resource
 Location = lib.Location
 Entry = lib.Entry
 
@@ -38,7 +46,7 @@ default = util.default
 
 __all__ = [
     # Main objects
-    'Node',
+    'Resource',
     'Location',
     'Entry',
     'Path',
@@ -73,7 +81,7 @@ __all__ = [
 # ---------------------------------------------------------------------
 
 
-def commit(node):
+def commit(resource):
     pass
 
 
@@ -81,50 +89,37 @@ def push():
     pass
 
 
-def flush(node, track_history=True, simulate=False):
+def flush(resource, track_history=True):
     """Commit pending values to the data-store
 
-    The flush occurs in three stages;
+    The flush occurs in three stages; find, track and
+    store. Finding is a matter of looking up `resource`
+    against the datastore::
 
-    * Find
-    * Track
-    * Store
-
-    1. Find
-        Here, the name of the requested `node` is
-        looked up against the datastore.
-
-        ```bash
         # We want to write..
         $ /home/marcus/.meta/new.string
 
         # ..but this one already exists
         $ /home/marcus/.meta/new.int
-        ```
 
-    2. Track
-        If an existing entry is found, store its
-        current value, along with who and when.
+    To track means to look for an existing entry. If found,
+    store its current value, along with who and when. Finally,
+    commit values to disk.
 
-    3. Store
-        Finally, commit the values to disk.
-
-    Args:
-        node (Node): Node to flush
-        track_history (bool, optional): Produce history of `node`
-        simulate (bool, optional): Do not actually write anything (NotImplemented)
+    Arguments:
+        resource (Resource): Resource to flush
+        track_history (bool, optional): Produce history of `resource`
 
     Returns:
-        Node: Unmodified
-
+        Resource: Unmodified
 
     """
 
-    assert isinstance(node, lib.Node)
+    assert isinstance(resource, lib.Resource)
 
-    parent = next(node.parent)
-    history_node = node
-    existing_node = None
+    parent = next(resource.parent)
+    history_resource = resource
+    existing_resource = None
 
     #  _______________
     # |      -->      |
@@ -135,16 +130,16 @@ def flush(node, track_history=True, simulate=False):
     #
     # Track and recycle existing
 
-    name = node.path.name
+    name = resource.path.name
 
     existing = find(parent.path.as_str, name)
     if existing:
-        existing_node = Entry(existing, parent=parent)
+        existing_resource = Entry(existing, parent=parent)
 
-    history_node = existing_node or node
-    if not history_node.isparent:
-        if track_history and service.exists(history_node.path.as_str):
-            _make_history(history_node)
+    history_resource = existing_resource or resource
+    if not history_resource.type in ('dict', 'list'):
+        if track_history and service.exists(history_resource.path.as_str):
+            _make_history(history_resource)
 
     #  _______________
     # |      -->      |
@@ -155,11 +150,11 @@ def flush(node, track_history=True, simulate=False):
     #
     # Recycle existing
 
-    if existing_node and node.path != existing_node.path:
+    if existing_resource and resource.path != existing_resource.path:
         # TODO: this should really be permanent, as the copy
         # has already been stored in history. But, for safety
         # let's keep it around until someone complains about it.
-        remove(existing_node, permanent=False)
+        remove(existing_resource, permanent=False)
 
     #  _______________
     # |      -->      |
@@ -170,104 +165,102 @@ def flush(node, track_history=True, simulate=False):
     #
     # Commit to datastore
 
-    if node.isparent:
-        service.flush_dir(node.path.as_str)
+    if isinstance(resource, Location) or resource.type in ('dict', 'list'):
+        service.flush_dir(resource.path.as_str)
 
-        for child in node:
-            flush(child, track_history, simulate)
+        for child in resource:
+            flush(child, track_history)
 
     else:
-        if not node.type:
+        if not resource.type:
             log.warning("Cannot flush %r, "
                         "it has no value."
-                        % node.path.as_str)
-            return node
+                        % resource.path.as_str)
+            return resource
 
-        path = node.path.as_str
-        value = node.dump()
+        path = resource.path.as_str
+        value = resource.dump()
 
         service.flush(path, value)
 
         log.info("flush(): Successfully flushed: %r" % path)
 
-    return node
+    return resource
 
 
-def pull(node, lazy=False, depth=1, merge=False, _currentlevel=1):
+def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
     """Physically retrieve value from datastore.
 
     Arguments:
         lazy (bool): Only pull if no existing value already exists
-        depth (int): Pull `node` and `depth` levels of children
-        merge (bool): Combine results with existing value of `node`
+        depth (int): Pull `resource` and `depth` levels of children
+        merge (bool): Combine results with existing value of `resource`
 
     Raises:
         error.Exists
 
     Returns:
-        Node: The originally passed node
+        Resource: The originally passed resource
 
     """
 
-    path = node.path
+    path = resource.path
 
-    if lazy and node.hasvalue:
-        return node
+    if lazy and resource.hasvalue:
+        return resource
 
     if not merge:
-        node.clear()
+        resource.clear()
 
     path = path.as_str
     if service.isdir(path):
         dirs, files = service.ls(path)
 
         for entry in dirs:
-            child = Entry(entry, parent=node)
-            child.isparent = True
+            child = Entry(entry + ".dict", parent=resource)
 
         for entry in files:
-            child = Entry(entry, parent=node)
-            child.isparent = False
+            child = Entry(entry, parent=resource)
 
     else:
         value = service.open(path)  # raises error.Exists
 
         # Empty files return an emptry string
         if value != "":
-            node.load(value)
+            resource.load(value)
 
     # Continue pulling children until `depth` is reached
     if _currentlevel < depth:
-        if node.isparent:
-            for child in node:
+        if resource.type in ('dict', 'list'):
+            for child in resource:
                 pull(child,
                      lazy=lazy,
                      depth=depth,
                      merge=merge,
                      _currentlevel=_currentlevel + 1)
 
-    node.isdirty = False
-    return node
+    resource.isdirty = False
+    return resource
 
 
-def remove(node, permanent=False):
-    """Remove `node` from datastore, either to trash or permanently"""
+def remove(resource, permanent=False):
+    """Remove `resource` from datastore, either to trash or permanently"""
 
-    if not service.exists(node.path.as_str):
-        log.warning("remove(): %s did not exist" % node.path.as_str)
+    if not service.exists(resource.path.as_str):
+        log.warning("remove(): %s did not exist" % resource.path.as_str)
         return False
 
     if permanent:
-        service.remove(node.path.as_str)
-        log.info("remote(): Permanently removed %r" % node.path.as_str)
+        service.remove(resource.path.as_str)
+        log.info("remote(): Permanently removed %r" % resource.path.as_str)
     else:
-        trash(node)
+        trash(resource)
 
     return True
 
 
-def trash(node):
-    trash_path = node.path.parent + lib.TRASH
+def trash(resource):
+    trash_path = resource.path.parent + lib.TRASH
 
     if not lib.Path.CONTAINER in trash_path.as_str:
         # Open Metadata only bothers with .meta subfolders.
@@ -275,44 +268,44 @@ def trash(node):
         # have to store it underneath an additional .meta
         trash_path = trash_path + lib.Path.CONTAINER
 
-    # Ensure node.path.name is unique in trash_path, as per RFC14
+    # Ensure resource.path.name is unique in trash_path, as per RFC14
     if service.exists(trash_path.as_str):
-        for match in util.find_all(trash_path.as_str, node.path.name):
+        for match in util.find_all(trash_path.as_str, resource.path.name):
             match_path = trash_path + match
             service.remove(match_path.as_str)
 
             log.info("remove(): Removing exisisting "
                      "%r from trash" % match_path.name)
 
-    basename = node.path.basename
+    basename = resource.path.basename
     log.info("Trashing basename: %s" % basename)
-    log.info("Fullname: %s" % node.path.as_str)
+    log.info("Fullname: %s" % resource.path.as_str)
     deleted_path = trash_path + basename
 
     assert not service.exists(deleted_path.as_str), deleted_path
 
-    service.move(node.path.as_str, deleted_path.as_str)
-    log.info("remove(): Successfully removed %r" % node.path.as_str)
+    service.move(resource.path.as_str, deleted_path.as_str)
+    log.info("remove(): Successfully removed %r" % resource.path.as_str)
 
 
-def history(node):
+def history(resource):
     pass
 
 
-def restore(node):
+def restore(resource):
     pass
 
 
-def _make_history(node):
-    """Store value of `node` as-is on disk in history"""
-    assert service.isfile(node.path.as_str), node.path
+def _make_history(resource):
+    """Store value of `resource` as-is on disk in history"""
+    assert service.isfile(resource.path.as_str), resource.path
 
     # We'll be pulling data into a copy, rather than the
     # original, so as to avoid overwriting any existing value.
-    copy = node.copy()
+    copy = resource.copy()
 
     try:
-        parent = next(node.parent)
+        parent = next(resource.parent)
 
         # Avoid our `copy` adding itself as a child
         # to `parent`; this would cause the dictionary
@@ -323,7 +316,7 @@ def _make_history(node):
         return
 
     # Prepare name of `imprint` (see RFC12)
-    name = node.path.name
+    name = resource.path.name
     imprint_time = service.currenttime()
     imprint_name = "{name}{sep}{time}".format(name=name,
                                               sep=lib.Path.OPTSEP,
@@ -354,8 +347,8 @@ def _make_history(node):
 # ---------------------------------------------------------------------
 
 
-def inherit(node, depth=0, merge=False, pull=True, lazy=False):
-    """Inherit `node` from above hierarchy
+def inherit(resource, depth=0, merge=False, pull=True, lazy=False):
+    """Inherit `resource` from above hierarchy
 
     Inheritance works much like it does in programming; any value
     present in a superclass is added, subclasses then overrides those
@@ -365,24 +358,24 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
         http://rfc.abstractfactory.io/spec/12/
 
     Parameters
-        node    -- Adding inherited values to this.
+        resource    -- Adding inherited values to this.
         depth   -- How far up a hierarchy to inherit from, 0 means unlimited
-        merge   -- Should I add to the values currently present in `node`?
+        merge   -- Should I add to the values currently present in `resource`?
         pull    -- Not pulling will only fill up the mro (see RFC12)
         lazy    -- Should I bother reading when values already exists?
 
     """
 
-    parent = node.location.raw_path
-    metapath = node.path.meta
+    parent = resource.location.raw_path
+    metapath = resource.path.meta
 
     # Temporary, in preparation for MRO and Bases
     # implementations.
-    while node.mro:
-        node.mro.pop()
+    while resource.mro:
+        resource.mro.pop()
 
     for location in util.locations(parent):
-        node.mro.append(location)
+        resource.mro.append(location)
     # /End temporary.
 
     tree = []
@@ -404,7 +397,7 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
     tree.reverse()
 
     if not merge:
-        node.clear()
+        resource.clear()
 
     # Assign inherited metadata in the order
     # they naturally override each other.
@@ -422,11 +415,11 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
         #         |         |
         #         |_________|
         #
-        #  Add child to node
+        #  Add child to resource
         #
         if isinstance(entry, list):
             for entry in entry:
-                node.add(entry)
+                resource.add(entry)
         else:
             #  ___
             # |___|___
@@ -434,10 +427,10 @@ def inherit(node, depth=0, merge=False, pull=True, lazy=False):
             # |         |  <--- value
             # |_________|
             #
-            node.value = entry.value
+            resource.value = entry.value
 
-    node.isdirty = False
-    return node
+    resource.isdirty = False
+    return resource
 
 
 # ---------------------------------------------------------------------
@@ -468,15 +461,17 @@ def convert(path):
 
 
 def read(path, metapath=None, convert=True, **kwargs):
-    """
-    Parameters
-        path        --
-        metapath    --
-        convert     --
+    """Convenience function with which to quickly read from an absolute path.
+
+    Arguments:
+        path (str): Absolute path from which to read metadata
+        metapath (str): Path to inner metadata, e.g. /size/width
+        convert (bool): Whether or not to return Plain-old-data
+            or Open Metadata objects
 
     """
 
-    # Unsupported keyword arguments
+    # Hidden keyword arguments
     _return_root = kwargs.pop('_return_root', False)
     _return_nonexisting = kwargs.pop('_return_nonexisting', False)
 
@@ -513,7 +508,7 @@ def read(path, metapath=None, convert=True, **kwargs):
         # Output
         #   --> ['child', 'anotherchild']
 
-        if root.isparent:
+        if isinstance(root, Location) or root.type in ('dict', 'list'):
             children = []
             for child in root:
                 children.append(child.path.name)
@@ -526,8 +521,8 @@ def read(path, metapath=None, convert=True, **kwargs):
     else:
         # Return value as-is, meaning Open Metadata
         # `Entry` and `Location` objects.
-
-        if root.isparent:
+        print "NOT CONVERTING"
+        if isinstance(root, Location) or root.type in ('dict', 'list'):
             # Output
             #   --> [Entry('child'), Entry('anotherchild')]
             value = root.value
@@ -626,12 +621,12 @@ def clear(path):
     remove(location)
 
 
-def islocation(node):
-    return isinstance(node, lib.Location)
+def islocation(resource):
+    return isinstance(resource, lib.Location)
 
 
-def isentry(node):
-    return isinstance(node, lib.Entry)
+def isentry(resource):
+    return isinstance(resource, lib.Entry)
 
 
 # if __name__ == '__main__':

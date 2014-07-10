@@ -17,6 +17,7 @@ from openmetadata import tests
 
 class TestEntryWrite(tests.ReadWriteTestCase):
     def test_flush_existing(self):
+        """Overwrite existing entry"""
         # Make it exist
         standard_int = om.Entry('standard_int', value=10, parent=self.root)
         om.flush(standard_int)
@@ -29,16 +30,14 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertEquals(standard_int.value, 15)
 
     def test_new_group(self):
-        """Writing an empty group is a matter of indicating
-        that it is a group"""
-
+        """Write a new group"""
         entry = om.Entry('a group', parent=self.root)
         entry.isgroup = True
         om.flush(entry)
 
         om.pull(entry)
         self.assertTrue(entry.isgroup)
-        self.assertIsNone(entry.path.suffix)
+        self.assertIsNone(entry.type)
         self.assertTrue(os.path.isdir(entry.path.as_str))
 
     def test_new_group_with_content(self):
@@ -61,7 +60,7 @@ class TestEntryWrite(tests.ReadWriteTestCase):
     #                               value='A string',
     #                               parent=self.root)
 
-    #     self.assertTrue(nongroup_entry.path.suffix == 'string')
+    #     self.assertTrue(nongroup_entry.type == 'string')
     #     om.flush(nongroup_entry)
 
     #     invalid_child = om.Entry('invalid_child',
@@ -81,10 +80,23 @@ class TestEntryWrite(tests.ReadWriteTestCase):
     #     self.assertTrue(nongroup_entry.isgroup)
 
     def test_removal(self):
-        pass
+        removed = om.Entry('removed', value=1, parent=self.root)
+        om.flush(removed)
+
+        self.assertTrue(os.path.isfile(removed.path.as_str))
+        om.remove(removed)
+        self.assertFalse(os.path.exists(removed.path.as_str))
 
     def test_removal_group(self):
-        pass
+        removed = om.Entry('removed', parent=self.root)
+        om.Entry('child', value=1, parent=removed)
+        self.assertTrue(removed.isgroup)
+
+        om.flush(removed)
+
+        self.assertTrue(os.path.isdir(removed.path.as_str))
+        om.remove(removed)
+        self.assertFalse(os.path.exists(removed.path.as_str))
 
     def flush_multiple(self):
         parent = om.Entry('parent', parent=self.root)
@@ -105,33 +117,40 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertEquals(self.data, pulled_data)
 
     def test_change_type_by_overwriting(self):
-        # Make it exist
+        """Types in Open Metadata are represented on disk as suffixes.
+        However a suffix is an implementation detail and should not
+        be modified by hand.
+
+        The equivalence in dynamic programming languages is this:
+
+        >> myint = 5
+        >> myint = "I'm a string now"
+
+        On disk, myint would initially be stored as `myint.int` but
+        after having been reassigned a string value, it would be stored
+        as `myint.string`. The point to take home being that suffixes
+        are a serialisation of type and dictates how the file is to be
+        read.
+
+        """
+
         height = om.Entry('height', value=10, parent=self.root)
         om.flush(height)
 
-        self.assertEquals(height.path.suffix, 'int')
+        self.assertEquals(height.type, 'int')
 
         height = om.Entry('height', value=11.1, parent=self.root)
         om.flush(height)
 
-        self.assertEquals(height.path.suffix, 'float')
+        self.assertEquals(height.type, 'float')
 
     def test_suffix_and_type_mismatch(self):
         height = om.Entry('height.int', value=10.1, parent=self.root)
-        self.assertEquals(height.path.suffix, 'float')
+        self.assertEquals(height.type, 'float')
         om.flush(height)
         om.pull(height)
-        self.assertEquals(height.path.suffix, 'float')
+        self.assertEquals(height.type, 'float')
 
-    def test_int(self):
-        name = 'integer'
-        value = 10
-
-        integer = om.Entry(name, value=value, parent=self.root)
-        om.flush(integer)
-        om.pull(integer)
-        self.assertEquals(integer.value, value)
-        self.assertEquals(integer.path.name, name)
 
 
 if __name__ == '__main__':

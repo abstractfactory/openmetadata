@@ -270,7 +270,7 @@ class Path(object):
         Example
             >>> path = Path('/home/marcus/.meta/group.list/dataset.int')
             >>> path.meta
-            '/group/dataset'
+            MetaPath('/group/dataset')
 
         """
 
@@ -286,7 +286,7 @@ class Path(object):
 
             metapath += '/' + part.split(self.EXT, 1)[0]
 
-        return metapath
+        return MetaPath(metapath)
 
     @property
     def location(self):
