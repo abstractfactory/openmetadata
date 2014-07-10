@@ -1,10 +1,7 @@
 """Test each service individually"""
 
-# Standard library
-# import os
 
 # Subject
-# import openmetadata as om
 from openmetadata import tests
 from openmetadata import error
 from openmetadata import service

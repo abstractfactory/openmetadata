@@ -11,6 +11,8 @@ Attributes:
 
 """
 
+import os
+import errno
 import logging
 import getpass
 
@@ -107,7 +109,7 @@ def flush(resource, track_history=True):
     commit values to disk.
 
     Arguments:
-        resource (Resource): Resource to flush
+        resource (Location/Resource): Location or Resource to flush
         track_history (bool, optional): Produce history of `resource`
 
     Returns:
@@ -115,9 +117,25 @@ def flush(resource, track_history=True):
 
     """
 
-    assert isinstance(resource, lib.Resource)
+    if isinstance(resource, Location):
+        target = _flush_location
 
-    parent = next(resource.parent)
+    elif isinstance(resource, lib.Resource):
+        target = _flush_entry
+
+    else:
+        raise ValueError("Must pass object of type Resource")
+
+    target(resource, track_history=track_history)
+
+
+def _flush_location(resource, track_history=True):
+    for child in resource:
+        _flush_entry(child, track_history)
+
+
+def _flush_entry(resource, track_history=True):
+    parent = resource.parent
     history_resource = resource
     existing_resource = None
 
@@ -138,7 +156,7 @@ def flush(resource, track_history=True):
 
     history_resource = existing_resource or resource
     if not history_resource.type in ('dict', 'list'):
-        if track_history and service.exists(history_resource.path.as_str):
+        if track_history and os.path.exists(history_resource.path.as_str):
             _make_history(history_resource)
 
     #  _______________
@@ -165,23 +183,33 @@ def flush(resource, track_history=True):
     #
     # Commit to datastore
 
-    if isinstance(resource, Location) or resource.type in ('dict', 'list'):
-        service.flush_dir(resource.path.as_str)
+    # Resource is a directory
+    if resource.type in ('dict', 'list'):
+        try:
+            os.makedirs(resource.path.as_str)
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                pass
 
         for child in resource:
             flush(child, track_history)
 
+    # Resource is a file
     else:
-        if not resource.type:
-            log.warning("Cannot flush %r, "
-                        "it has no value."
-                        % resource.path.as_str)
-            return resource
+        assert resource.type, resource.path.as_str
 
         path = resource.path.as_str
         value = resource.dump()
 
-        service.flush(path, value)
+        dirname = os.path.dirname(path)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        if value is None:
+            value = ''
+
+        with open(path, 'w') as f:
+            f.write(value)
 
         log.info("flush(): Successfully flushed: %r" % path)
 
@@ -204,23 +232,41 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
 
     """
 
-    path = resource.path
+    if not service.exists(resource.path.as_str):
+        """
+        If the name of `node` has been entered manually, chances
+        are that there is an existing node on disk under a different
+        suffix. If so, find a matching name, under any suffix,
+        and assume this is the one the user intended to pull from.
 
-    if lazy and resource.hasvalue:
+        """
+        similar = util.find(resource.path.parent.as_str, resource.path.name)
+
+        if similar:
+            resource._path = resource.path.copy(path=similar)
+            return pull(resource,
+                        lazy=lazy,
+                        depth=depth,
+                        merge=merge,
+                        _currentlevel=_currentlevel)
+        else:
+            raise error.Exists("{} does not exist".format(resource.path))
+
+    if lazy and resource.has_value:
         return resource
 
     if not merge:
         resource.clear()
 
-    path = path.as_str
-    if service.isdir(path):
+    path = resource.path.as_str
+    if os.path.isdir(path):
         dirs, files = service.ls(path)
 
         for entry in dirs:
-            child = Entry(entry + ".dict", parent=resource)
+            Entry(entry + ".dict", parent=resource)
 
         for entry in files:
-            child = Entry(entry, parent=resource)
+            Entry(entry, parent=resource)
 
     else:
         value = service.open(path)  # raises error.Exists
@@ -305,7 +351,7 @@ def _make_history(resource):
     copy = resource.copy()
 
     try:
-        parent = next(resource.parent)
+        parent = resource.parent
 
         # Avoid our `copy` adding itself as a child
         # to `parent`; this would cause the dictionary
@@ -366,24 +412,15 @@ def inherit(resource, depth=0, merge=False, pull=True, lazy=False):
 
     """
 
-    parent = resource.location.raw_path
+    parent = resource.location._path
     metapath = resource.path.meta
-
-    # Temporary, in preparation for MRO and Bases
-    # implementations.
-    while resource.mro:
-        resource.mro.pop()
-
-    for location in util.locations(parent):
-        resource.mro.append(location)
-    # /End temporary.
 
     tree = []
     level = 1
     while parent:
 
         if pull:
-            entry = read(parent.as_str, metapath, convert=False)
+            entry = read(parent.as_str, metapath.as_str, convert=False)
             if entry:
                 tree.append(entry)
 
@@ -488,7 +525,8 @@ def read(path, metapath=None, convert=True, **kwargs):
 
     try:
         pull(root)
-    except error.Exists:
+    except error.Exists as e:
+        print e
         if not _return_nonexisting:
             return None
 
@@ -509,10 +547,7 @@ def read(path, metapath=None, convert=True, **kwargs):
         #   --> ['child', 'anotherchild']
 
         if isinstance(root, Location) or root.type in ('dict', 'list'):
-            children = []
-            for child in root:
-                children.append(child.path.name)
-            return children
+            return [child.path.name for child in root]
         else:
             # Output
             #   --> 'value of child'
@@ -521,7 +556,6 @@ def read(path, metapath=None, convert=True, **kwargs):
     else:
         # Return value as-is, meaning Open Metadata
         # `Entry` and `Location` objects.
-        print "NOT CONVERTING"
         if isinstance(root, Location) or root.type in ('dict', 'list'):
             # Output
             #   --> [Entry('child'), Entry('anotherchild')]
@@ -538,7 +572,16 @@ def read(path, metapath=None, convert=True, **kwargs):
 
 
 def entry(location, metapath):
-    """Get entry from `metapath` in `location`"""
+    """Get entry from `metapath` in `location`
+
+    Arguments:
+        location (Location): Location object in which entry resides
+        metapath (str): Metapath to convert into object
+
+    Returns:
+        Entry: Fully qualified Entry object
+
+    """
 
     if isinstance(location, basestring):
         location = Location(location)
@@ -550,8 +593,6 @@ def entry(location, metapath):
         try:
             pull(root)
         except error.Exists:
-            # if not _return_nonexisting:
-            #     return None
             pass
 
         current = parts.pop(0)
@@ -576,11 +617,6 @@ def entry(location, metapath):
             root = new_root
 
         except KeyError:
-            # if not _return_nonexisting:
-            #     return None
-
-            # If we're interested in non-existent
-            # entries, carry on..
             root = lib.Entry(current, parent=root)
 
     return root

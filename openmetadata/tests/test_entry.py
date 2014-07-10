@@ -11,4 +11,4 @@ class TestEntryRead(tests.ReadWriteTestCase):
         self.assertTrue(entry.type, 'string')
 
         entry = om.Entry('test_nosuffix', parent=self.root)
-        self.assertTrue(entry.type, None)
+        self.assertEquals(entry.type, None)

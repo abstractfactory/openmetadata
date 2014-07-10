@@ -21,6 +21,13 @@ class TestEntryRead(tests.ReadOnlyTestCase):
         self.assertEquals(entry.path.basename, "standard_int.int")
         self.assertEquals(entry.path.suffix, "int")
 
+    def test_read_misnamed_directory(self):
+        """A directory is without suffix:
+
+        /home/.meta/mygroup/somedata.string
+
+        """
+
     def test_modify_existing(self):
         """Modifying an existing value with a value of the same
         type should leave the original suffix intact"""

@@ -19,7 +19,6 @@ Attributes:
 import abc
 import json
 import logging
-import warnings
 
 from openmetadata import path
 from openmetadata import error
@@ -84,39 +83,25 @@ class Resource(object):
         parent (Resource, optional): Parent of resource. Parents
             are used to hierarchically organise resources.
 
+    Attributes:
+        isdirty:
+
     """
 
     __metaclass__ = abc.ABCMeta
     log = logging.getLogger('openmetadata.lib.Resource')
 
     def __iter__(self):
-        value = self._value
-
-        if not value:
-            return
-
-        if isinstance(value, dict):
-            for key, value in value.iteritems():
-                # Filtering
-                #
-                # TODO: make this more explicit,
-                # and configurable.
-                if key.startswith('.'):
-                    continue
-
-                yield value
-        else:
-            for value in self.value:
-                yield value
+        for _, child in self._children.iteritems():
+            if self.filter:
+                if self.filter(child):
+                    yield child
+            else:
+                yield child
 
     def __getitem__(self, item):
         try:
-            if not self.type in ('dict', 'list'):
-                raise KeyError
-            if self._value is None:
-                raise KeyError
-            return self._value[item]
-
+            return self._children[item]
         except KeyError:
             raise KeyError("%r not in %r" % (item, self))
 
@@ -124,7 +109,7 @@ class Resource(object):
         return key in self._value
 
     def __str__(self):
-        return self.raw_path.name
+        return self._path.name
 
     def __repr__(self):
         return u"%s.%s(%r)" % (__name__, type(self).__name__, self.__str__())
@@ -145,52 +130,56 @@ class Resource(object):
 
     @abc.abstractmethod  # Prevent direct instantiation
     def __init__(self, path, value=None, parent=None):
+        assert path is not ''
+
         if isinstance(path, basestring):
             path = Path(path)
 
         self._path = path
-        self._isvalid = None
-
         self._value = value
-        self._parent = []
-        # self._isparent = None
+        self._parent = None
+        self._children = dict()
+        self.filter = None
         self.isdirty = False
-        self._mro = [self]
 
         if parent:
             parent.add(self)
 
+    def add(self, child):
+        """Add child `child` to self
+
+        Arguments:
+            child (Resource): Child which to add to self
+
+        """
+
+        if not isinstance(self._value, dict):
+            self._value = {}
+
+        if not self.type in ('dict', 'list'):
+            self._path = self._path.copy(suffix='dict')
+
+        self._children[child.path.name] = child
+        child._parent = self
+
     @property
     def path(self):
-        path = self.raw_path
+        path = self._path
 
-        try:
-            parent = next(self.parent)
-        except StopIteration:
+        if not self._parent:
             return path
 
-        parent_path = parent.path
-        if hasattr(parent, 'resolved_path'):
-            parent_path = parent.resolved_path
+        parent_path = self._parent.path
+        if hasattr(self._parent, 'resolved_path'):
+            parent_path = self._parent.resolved_path
 
         path = parent_path + path
-        self._isvalid = True
 
         return path
 
     @property
     def name(self):
-        return self.raw_path.name
-
-    @property
-    def raw_path(self):
-        return self._path
-
-    @property
-    def mro(self):
-        """This will facilitate modifying the inheritance
-        tree from which cascading metadata is drawn"""
-        raise NotImplementedError
+        return self._path.name
 
     @property
     def location(self):
@@ -209,25 +198,15 @@ class Resource(object):
     @property
     def type(self):
         """
-        Find type by looking in the object or its suffix
-         _________         _______________
-        |         |       |               |
-        |  cache  |  -->  |  path.suffix  |
-        |_________|       |_______________|
+        `type` is shorthand for a resource's suffix
+         _______________
+        |               |
+        |  path.suffix  |
+        |_______________|
 
         """
 
         return self.path.suffix
-
-    def add(self, child):
-        if not isinstance(self._value, dict):
-            self._value = {}
-
-        path = child.raw_path
-        key = path.name
-
-        self._value[key] = child
-        child._parent.append(self)
 
     def copy(self, path=None, deep=False, parent=None):
         """Create copy of self, based on optional modifications
@@ -239,7 +218,7 @@ class Resource(object):
 
         """
 
-        path = path or self.raw_path
+        path = path or self._path
         copy = self.__class__(path, parent=parent)
 
         # Perform a deep copy, including all children
@@ -259,14 +238,7 @@ class Resource(object):
 
     def clear(self):
         """Remove existing value/children"""
-        if isinstance(self._value, dict):
-            while self._value:
-                self._value.popitem()
-        elif isinstance(self._value, list):
-            while self._value:
-                self._value.pop()
-        else:
-            self._value = None
+        self._children.clear()
 
     def ls(self, _level=0):
         """List contained children"""
@@ -280,8 +252,12 @@ class Resource(object):
 
     @property
     def parent(self):
-        for parent in self._parent:
-            yield parent
+        return self._parent
+
+    @property
+    def children(self):
+        for child in self._children:
+            yield child
 
     @property
     def value(self):
@@ -289,7 +265,7 @@ class Resource(object):
             default = defaults.get(self.type)
             if hasattr(default, '__call__'):
                 default = default()
-            return default
+            self._value = default
         return self._value
 
     @value.setter
@@ -303,53 +279,18 @@ class Resource(object):
             dt = type(value)
 
         suffix = type_to_suffix(dt, hint=self.path.suffix)
-        return self.raw_path.copy(suffix=suffix)
-
-    # @property
-    # def isparent(self):
-    #     """`self` contains one or more entrys
-
-    #     Description
-    #         A Entry containing other entrys is referred
-    #         to as a collection; on a file-system, a collection
-    #         represents a folder. Non-collections are then files.
-
-    #     """
-
-    #     warnings.warn("This has been reprecated in favour of isgroup",
-    #                   DeprecationWarning)
-
-    #     if self._isparent is None:
-    #         return isinstance(self._value, dict)
-    #     return self._isparent
-
-    # @property
-    # def isgroup(self):
-    #     """Transitioning to isgroup over isparent"""
-    #     if self._isparent is None:
-    #         return isinstance(self._value, dict)
-    #     return self._isparent
-
-    # @isgroup.setter
-    # def isgroup(self, value):
-    #     """Manually specify if object is a collection"""
-    #     self._isparent = value
-
-    # @isparent.setter
-    # def isparent(self, value):
-    #     """Manually specify if object is a collection"""
-    #     self._isparent = value
+        return self._path.copy(suffix=suffix)
 
     @property
-    def haschildren(self):
-        return self.type in ('dict', 'list') and self._value
+    def has_children(self):
+        return True if self.children else False
 
     @property
-    def hasvalue(self):
+    def has_value(self):
         return self._value is not None
 
     @property
-    def hasparent(self):
+    def has_parent(self):
         return self.parent is not None
 
 
@@ -382,13 +323,25 @@ class Location(Resource):
             raise error.RelativePath(
                 'DefaultPath must be absolute: %s' % self._path)
 
+    def add(self, child):
+        """Add child `child` to self
+
+        Arguments:
+            child (Resource): Child which to add to self
+
+        """
+
+        self._value = None
+        self._children[child.path.name] = child
+        child._parent = self
+
     @property
     def path(self):
         return self._path + self._path.CONTAINER
 
     @property
     def name(self):
-        return self.raw_path.parent.name
+        return self._path.parent.name
 
     @property
     def parent(self):
@@ -407,7 +360,7 @@ class Location(Resource):
     #     return True
 
     @property
-    def hasparent(self):
+    def has_parent(self):
         return True
 
 
@@ -517,18 +470,18 @@ class Entry(Resource):
         return json.dumps(value)
 
 
-# if __name__ == '__main__':
-#     # import doctest
-#     # doctest.testmod()
+if __name__ == '__main__':
+    # import doctest
+    # doctest.testmod()
 
-#     import openmetadata as om
-#     om.setup_log('openmetadata')
+    import tempfile
+    import openmetadata as om
+    om.setup_log('openmetadata')
 
-#     # Starting-point
-#     location = om.Location(r'C:\Users\marcus\om2')
-#     # entry = om.Entry('test', parent=location)
-#     entry = om.Entry('app.class', parent=location)
-#     print repr(entry.path)
+    # Starting-point
+    root = tempfile.mkdtemp()
+    location = om.Location(root)
 
-#     # meta = DefaultPath(r'c:\users') + MetaPath('/test')
-#     # print meta
+    entry = om.Entry('app.dict', parent=location)
+    child = om.Entry('child.string', value="Hello", parent=entry)
+    print repr(child.path)

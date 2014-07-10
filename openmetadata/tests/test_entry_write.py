@@ -16,6 +16,34 @@ from openmetadata import tests
 
 
 class TestEntryWrite(tests.ReadWriteTestCase):
+    def test_integration(self):
+        """Test a combination of features"""
+        entry = om.Entry('test.string', value="Hello", parent=self.root)
+        child = om.Entry('child.int', value=1, parent=entry)
+        self.assertEquals(entry.type, 'dict')
+        om.flush(entry)
+        om.pull(entry)
+        self.assertEquals(entry.type, 'dict')
+        entry.value = "Hello"
+        self.assertEquals(entry.type, 'string')
+        self.assertEquals(entry.value, "Hello")
+        om.flush(entry)
+        om.pull(entry)
+        self.assertFalse(os.path.exists(child.path.as_str))
+
+        child = om.Entry('child.int', value=1, parent=entry)
+        om.flush(entry)
+        self.assertEquals(om.read(self.root_path, 'test/child'), 1)
+        om.write(self.root_path, '/test/child', 2)
+        self.assertEquals(om.read(self.root_path, 'test/child'), 2)
+        om.write(self.root_path, '/root/test/another', 10)
+        self.assertEquals(om.read(self.root_path, 'root/test/another'), 10)
+
+    def test_noname(self):
+        """Not assigning a name to an entry is considered a bug"""
+        entry = om.Entry('', value='Hello', parent=self.root)
+        self.assertRaises(AssertionError, om.flush(entry))
+
     def test_flush_existing(self):
         """Overwrite existing entry"""
         # Make it exist
@@ -31,13 +59,11 @@ class TestEntryWrite(tests.ReadWriteTestCase):
 
     def test_new_group(self):
         """Write a new group"""
-        entry = om.Entry('a group', parent=self.root)
-        entry.isgroup = True
+        entry = om.Entry('a group.dict', parent=self.root)
         om.flush(entry)
 
         om.pull(entry)
-        self.assertTrue(entry.isgroup)
-        self.assertIsNone(entry.type)
+        self.assertEquals(entry.type, 'dict')
         self.assertTrue(os.path.isdir(entry.path.as_str))
 
     def test_new_group_with_content(self):
@@ -49,35 +75,36 @@ class TestEntryWrite(tests.ReadWriteTestCase):
 
         om.flush(entry)
 
-        self.assertTrue(entry.isgroup)
+        self.assertTrue(entry.type == 'dict')
         self.assertTrue(os.path.exists(entry.path.as_str))
 
-    # def test_add_entries_to_nongroup(self):
-    #     """Adding entries to an entry that isn't a group will
-    #     cast it to a group"""
+    def test_add_entries_to_nongroup(self):
+        """Adding entries to an entry that isn't a group will
+        cast it to a group"""
 
-    #     nongroup_entry = om.Entry('nongroup',
-    #                               value='A string',
-    #                               parent=self.root)
+        nongroup_entry = om.Entry('nongroup',
+                                  value='A string',
+                                  parent=self.root)
 
-    #     self.assertTrue(nongroup_entry.type == 'string')
-    #     om.flush(nongroup_entry)
+        self.assertTrue(nongroup_entry.type == 'string')
+        om.flush(nongroup_entry)
 
-    #     invalid_child = om.Entry('invalid_child',
-    #                              value='a string',
-    #                              parent=nongroup_entry)
+        invalid_child = om.Entry('invalid_child',
+                                 value='a string',
+                                 parent=nongroup_entry)
 
-    #     # By adding a child, the nongroup becomes a group.
-    #     # Just like it would in a dynamic programming language:
-    #     # >>> myint = 5
-    #     # >>> myint = list()
-    #     self.assertTrue(nongroup_entry.isgroup)
+        # By adding a child, the nongroup becomes a group.
+        # Just like it would in a dynamic programming language:
+        # >>> myint = 5
+        # >>> myint = list()
+        self.assertEquals(nongroup_entry.type, 'dict')
 
-    #     om.flush(nongroup_entry)
-    #     om.pull(nongroup_entry)
+        om.flush(nongroup_entry)
+        om.pull(nongroup_entry)
 
-    #     self.assertTrue(os.path.isdir(nongroup_entry.path.as_str))
-    #     self.assertTrue(nongroup_entry.isgroup)
+        self.assertTrue(os.path.exists(invalid_child.path.as_str))
+        self.assertTrue(os.path.isdir(nongroup_entry.path.as_str))
+        self.assertEquals(nongroup_entry.type, 'dict')
 
     def test_removal(self):
         removed = om.Entry('removed', value=1, parent=self.root)
@@ -88,9 +115,9 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertFalse(os.path.exists(removed.path.as_str))
 
     def test_removal_group(self):
-        removed = om.Entry('removed', parent=self.root)
+        removed = om.Entry('removed.dict', parent=self.root)
         om.Entry('child', value=1, parent=removed)
-        self.assertTrue(removed.isgroup)
+        self.assertEquals(removed.type, 'dict')
 
         om.flush(removed)
 
