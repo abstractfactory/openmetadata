@@ -67,10 +67,21 @@ def locations(path):
 
 
 def parse_metapath(metapath):
+    """Spit metapath `metapath` into individual components
+
+    Example:
+        >>> parse_metapath('/marcus/ottosson')
+        ['marcus', 'ottosson']
+        >>> parse_metapath('without/root')
+        ['without', 'root']
+
+    """
+    parts = []
     if metapath:
-        parts = metapath.split(lib.Path.METASEP)
-    else:
-        parts = []
+        for part in metapath.split(lib.Path.METASEP):
+            if not part:
+                continue
+            parts.append(part)
     return parts
 
 
@@ -173,7 +184,3 @@ def search(path, name):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-
-    import os
-    home = os.path.expanduser('~/om')
-    print find(home, 'address')
