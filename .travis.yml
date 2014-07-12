@@ -1,0 +1,10 @@
+language: python
+python:
+  - 2.7
+install:
+  - pip install coveralls
+script:
+  - nosetests --cover-package=openmetadata --with-doctest --with-coverage
+  - pip install git+git://github.com/abstractfactory/openmetadata.git
+after_success:
+  - coveralls

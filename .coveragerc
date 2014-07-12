@@ -1,0 +1,6 @@
+[run]
+source = cquery
+
+; to make nosetests happy
+[report]
+include = *openmetadata*
