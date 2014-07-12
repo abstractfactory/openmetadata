@@ -22,6 +22,7 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         child = om.Entry('child.int', value=1, parent=entry)
         self.assertEquals(entry.type, 'dict')
         om.flush(entry)
+        self.assertTrue(os.path.exists(entry.path.as_str))
         om.pull(entry)
         self.assertEquals(entry.type, 'dict')
         entry.value = "Hello"
@@ -42,14 +43,16 @@ class TestEntryWrite(tests.ReadWriteTestCase):
     def test_noname(self):
         """Not assigning a name to an entry is considered a bug"""
         self.assertRaises(AssertionError, om.Entry, '',
-                                                    value='Hello',
-                                                    parent=self.root)
+                          value='Hello',
+                          parent=self.root)
 
     def test_flush_existing(self):
         """Overwrite existing entry"""
         # Make it exist
         standard_int = om.Entry('standard_int', value=10, parent=self.root)
         om.flush(standard_int)
+
+        self.assertTrue(os.path.exists(standard_int.path.as_str))
 
         # Then flush it again
         standard_int = om.Entry('standard_int', value=15, parent=self.root)
@@ -80,8 +83,12 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertTrue(os.path.exists(entry.path.as_str))
 
     def test_add_entries_to_nongroup(self):
-        """Adding entries to an entry that isn't a group will
-        cast it to a group"""
+        """Add entries to nongroup
+
+        Adding entries to an entry that isn't a group will
+        cast it to a group.
+
+        """
 
         nongroup_entry = om.Entry('nongroup',
                                   value='A string',
@@ -101,6 +108,9 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertEquals(nongroup_entry.type, 'dict')
 
         om.flush(nongroup_entry)
+
+        self.assertTrue(os.path.exists(nongroup_entry.path.as_str))
+
         om.pull(nongroup_entry)
 
         self.assertTrue(os.path.exists(invalid_child.path.as_str))

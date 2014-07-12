@@ -18,6 +18,9 @@ try:
     om.write(level2, '/address/city', value='Code City')
     om.write(level2, '/address/postcode', value='Level 2 postcode')
 
+    assert os.path.exists(os.path.join(level1, '.meta'))
+    assert os.path.exists(os.path.join(level2, '.meta'))
+
     # Now that we have written a hierarchy of values,
     # let's try and reach `street` from level2, even
     # though `street` resides in level1
@@ -48,6 +51,9 @@ try:
         print "Success"
     except KeyError:
         print "This is NOT supposed to happen"
+
+except:
+    raise
 
 finally:
     shutil.rmtree(root)

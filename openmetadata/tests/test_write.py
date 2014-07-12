@@ -2,7 +2,7 @@ import openmetadata as om
 import openmetadata.tests
 
 
-class TestWrite(openmetadata.tests.ReadOnlyTestCase):
+class TestWrite(openmetadata.tests.ReadWriteTestCase):
     def test_write_simple(self):
         om.write(self.root_path, 'simple', 'value')
         self.assertEquals(om.read(self.root_path, 'simple'), 'value')

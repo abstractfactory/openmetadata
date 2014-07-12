@@ -157,7 +157,7 @@ def _flush_entry(resource, track_history=True):
 
     history_resource = existing_resource or resource
     if not history_resource.type in ('dict', 'list'):
-        if track_history and os.path.exists(history_resource.path.as_str):
+        if track_history: # and os.path.exists(history_resource.path.as_str):
             _make_history(history_resource)
 
     #  _______________
@@ -348,12 +348,22 @@ def restore(resource):
 
 
 def _make_history(resource):
-    """Store value of `resource` as-is on disk in history"""
-    assert service.isfile(resource.path.as_str), resource.path
+    """Store value of `resource` as-is on disk in history
+
+    Arguments:
+        resource (Resource): Resource from which to make history.
+
+    """
 
     # We'll be pulling data into a copy, rather than the
     # original, so as to avoid overwriting any existing value.
     copy = resource.copy()
+
+    try:
+        pull(copy, lazy=True)
+    except error.Exists:
+        # If it doesn't exist, we can't make history.
+        return
 
     try:
         parent = resource.parent
@@ -373,7 +383,6 @@ def _make_history(resource):
                                               sep=lib.Path.OPTSEP,
                                               time=imprint_time)
     # Get previous value
-    pull(copy, lazy=True)
     old_value = pull(copy).value
     old_suffix = copy.path.suffix
 
