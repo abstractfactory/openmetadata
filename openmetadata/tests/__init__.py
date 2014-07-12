@@ -33,7 +33,8 @@ class ReadWriteTestCase(unittest.TestCase):
 
 class ReadOnlyTestCase(unittest.TestCase):
     def setUp(self):
-        root_path = os.path.abspath('fixtures/basic')
+        module_path = os.path.dirname(__file__)
+        root_path = os.path.join(module_path, 'fixtures', 'basic')
         project_path = os.path.join(root_path,
                                     'projects',
                                     'content',

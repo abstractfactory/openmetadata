@@ -153,8 +153,12 @@ class Resource(object):
 
         """
 
+        assert isinstance(child, Resource), repr(child)
+
         if not isinstance(self._value, dict):
-            self._value = {}
+            # Clear out value if a child is added, as there
+            # can't be both value and child.
+            self._value = dict()
 
         if not self.type in ('dict', 'list'):
             self._path = self._path.copy(suffix='dict')
@@ -256,7 +260,7 @@ class Resource(object):
 
     @property
     def children(self):
-        for child in self._children:
+        for child in self._children.values():
             yield child
 
     @property
@@ -272,14 +276,14 @@ class Resource(object):
     def value(self, value):
         raise NotImplementedError
 
-    def _resolve_suffix(self, value=None):
-        if value is None:
-            return self._path
-        else:
-            dt = type(value)
+    # def _resolve_suffix(self, value=None):
+    #     if value is None:
+    #         return self._path
+    #     else:
+    #         dt = type(value)
 
-        suffix = type_to_suffix(dt, hint=self.path.suffix)
-        return self._path.copy(suffix=suffix)
+    #     suffix = type_to_suffix(dt, hint=self.path.suffix)
+    #     return self._path.copy(suffix=suffix)
 
     @property
     def has_children(self):
@@ -345,7 +349,8 @@ class Location(Resource):
 
     @property
     def parent(self):
-        yield Location(self._path.parent)
+        parent = self._path.parent
+        return Location(parent) if parent else None
 
     def flush(self):
         """Based on HDF5 flush; calls upon separate mechanisms"""
@@ -422,8 +427,14 @@ class Entry(Resource):
 
     @value.setter
     def value(self, value):
-        self._path = self._resolve_suffix(value)
-        assert self.path.suffix, self.path.as_str
+        # Resolve suffix
+        if value is not None:
+            datatype = type(value)
+
+            suffix = type_to_suffix(datatype, hint=self.type)
+            self._path = self._path.copy(suffix=suffix)
+
+        assert self.type, self.path.as_str
 
         # Reset isparent flag.
         #

@@ -6,12 +6,14 @@
 
 """
 
+import os
+
 # Subject
 import openmetadata as om
-from openmetadata import tests
+import openmetadata.tests
 
 
-class TestEntryRead(tests.ReadOnlyTestCase):
+class TestEntryRead(openmetadata.tests.ReadOnlyTestCase):
 
     def test_pull_existing(self):
         """Read from existing metadata"""
@@ -42,21 +44,15 @@ class TestEntryRead(tests.ReadOnlyTestCase):
         self.assertRaises(om.error.Exists, om.pull, entry)
 
     def test_no_suffix_string(self):
-        """Entries without suffixes and value are mis-named. They are
-        still valid entries however and their type is inferred by their
-        value. Assuming their value is a valid JSON-formatted string.
-
-        When pulling, the value will determine its type and he suffix
-        will then be indirectly determined to string"""
-
+        """Entries without suffixes and value are considered corrupt"""
         entry = om.Entry('nosuffix_string', parent=self.project)
         self.assertEquals(entry.path.suffix, None)
-
-        om.pull(entry)
-        self.assertEquals(entry.path.suffix, 'string')
+        self.assertRaises(om.error.Corrupt, om.pull, entry)
 
     def test_pull_unknown_string(self):
+        """Pull from entry whose value is string but suffix is misnamed"""
         entry = om.Entry('unknown_string.abc', parent=self.project)
+        self.assertTrue(os.path.exists(entry.path.as_str))
         om.pull(entry)
         self.assertEquals(entry.value, u'this is of type string')
         self.assertEquals(entry.path.suffix, 'string')

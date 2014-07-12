@@ -64,6 +64,7 @@ __all__ = [
     'find',
     'split',
     'default',
+    'entry',
     # 'find_all',
     # 'exists',
     # 'existing',
@@ -252,6 +253,10 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
         else:
             raise error.Exists("{} does not exist".format(resource.path))
 
+    if not (isinstance(resource, Location) or resource.type):
+        raise error.Corrupt(
+            "Resource did not have type: {}".format(resource.path))
+
     if lazy and resource.has_value:
         return resource
 
@@ -263,7 +268,7 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
         dirs, files = service.ls(path)
 
         for entry in dirs:
-            Entry(entry + ".dict", parent=resource)
+            Entry(entry, parent=resource)
 
         for entry in files:
             Entry(entry, parent=resource)
@@ -393,54 +398,116 @@ def _make_history(resource):
 # ---------------------------------------------------------------------
 
 
-def inherit(resource, depth=0, merge=False, pull=True, lazy=False):
+def inherit(resource, depth=0, merge=False, lazy=False):
     """Inherit `resource` from above hierarchy
 
     Inheritance works much like it does in programming; any value
     present in a superclass is added, subclasses then overrides those
     values.
 
-    Specification
-        http://rfc.abstractfactory.io/spec/12/
+    Specification - http://rfc.abstractfactory.io/spec/12/
 
-    Parameters
-        resource    -- Adding inherited values to this.
-        depth   -- How far up a hierarchy to inherit from, 0 means unlimited
-        merge   -- Should I add to the values currently present in `resource`?
-        pull    -- Not pulling will only fill up the mro (see RFC12)
-        lazy    -- Should I bother reading when values already exists?
+    Parameters:
+        resource (str): Adding inherited values to this.
+        depth (int): How far up a hierarchy to inherit from, 0 means unlimited
+        merge (bool): Either keep current values and merge new, or clear first.
+        pull (bool): Not pulling will only fill up the mro (see RFC12)
+        lazy (bool): Should I bother reading when values already exists?
 
     """
 
-    parent = resource.location._path
-    metapath = resource.path.meta
+    if isinstance(resource, Location):
+        return _inherit_location(resource, depth, merge, lazy)
+    else:
+        return _inherit_entry(resource, depth, merge, lazy)
 
-    tree = []
-    level = 1
+
+def _inherit_entry(resource, depth=0, merge=False, lazy=False):
+    """Inheriting an entry differs from inheriting a Location
+
+    A Location is only capable of storing children, whereas an Entry
+    may hold either children or a value. Inheriting children will traverse
+    the hierarchy like for Location, but inheriting value means to fetch
+    the closest value in the method-resolution-order.
+
+    TODO: At the moment, values are read from top-to-bottom even though
+        a great increase in performance and I/O could be made if it only
+        fetched the closest value; as advertised above. It is however, an
+        optimisation and thus delayed.
+
+    """
+
+    tree = list()
+
+    parent = resource.location
     while parent:
-
-        if pull:
-            entry = read(parent.as_str, metapath.as_str, convert=False)
-            if entry:
-                tree.append(entry)
-
-        if depth and level > depth:
-            break
-
-        level += 1
+        tree.insert(0, parent)
         parent = parent.parent
 
     # Children overwrites parents
     tree.reverse()
 
-    if not merge:
-        resource.clear()
+    parent = tree.pop()
+    metapath = resource.path.meta
+
+    while tree:
+        descendant = entry(parent, metapath.as_str)
+
+        try:
+            pull(descendant)
+        except error.Exists:
+            pass
+
+        else:
+            #  ___
+            # |___|___
+            # |       |\
+            # |         |
+            # |_________|
+            #     |    ___
+            #     |   |___|___
+            #     |___|       |\
+            #         |         |
+            #         |_________|
+            #
+            #  Add child to location
+            if descendant.type in ('dict', 'list'):
+                for child in descendant.children:
+                    resource.add(child)
+
+            else:
+                #  ___
+                # |___|___
+                # |       |\
+                # |         |  <--- value
+                # |_________|
+                #
+                value = descendant.value
+
+                if value:
+                    resource.value = value
+
+        parent = tree.pop()
+
+    return resource
+
+
+def _inherit_location(location, depth=0, merge=False, lazy=False):
+    tree = list()
+
+    parent = location
+    while parent:
+        tree.insert(0, parent)
+        parent = parent.parent
+
+    # Children overwrites parents
+    tree.reverse()
 
     # Assign inherited metadata in the order
     # they naturally override each other.
     # Overridden values will silently retreat
     # back into the depths from which they came.
-    for entry in tree:
+    for location in tree:
         #  ___
         # |___|___
         # |       |\
@@ -452,22 +519,27 @@ def inherit(resource, depth=0, merge=False, pull=True, lazy=False):
         #         |         |
         #         |_________|
         #
-        #  Add child to resource
-        #
-        if isinstance(entry, list):
-            for entry in entry:
-                resource.add(entry)
-        else:
-            #  ___
-            # |___|___
-            # |       |\
-            # |         |  <--- value
-            # |_________|
-            #
-            resource.value = entry.value
+        #  Add child to location
 
-    resource.isdirty = False
-    return resource
+        try:
+            pull(location)
+        except error.Exists:
+            pass
+        else:
+            for entry in location:
+                location.add(entry)
+
+    return location
+
+
+def _inherit_value():
+    """TODO: transition from inheriting location versus entries to
+        inhertiing values versus children, as it more closely relates
+        to the differences between the two"""
+
+
+def _inherit_children():
+    pass
 
 
 # ---------------------------------------------------------------------
@@ -521,12 +593,14 @@ def read(path, metapath=None, convert=True, **kwargs):
 
     location = Location(path)
 
-    root = entry(location=location, metapath=metapath)
+    if metapath:
+        root = entry(location=location, metapath=metapath)
+    else:
+        root = location
 
     try:
         pull(root)
-    except error.Exists as e:
-        print e
+    except error.Exists:
         if not _return_nonexisting:
             return None
 
@@ -574,9 +648,11 @@ def read(path, metapath=None, convert=True, **kwargs):
 def entry(location, metapath):
     """Get entry from `metapath` in `location`
 
+    Supports inputs as either string or native Location and Path objects.
+
     Arguments:
-        location (Location): Location object in which entry resides
-        metapath (str): Metapath to convert into object
+        location (str): Location in which entry resides
+        metapath (str): Metapath which to convert into Entry
 
     Returns:
         Entry: Fully qualified Entry object
@@ -586,9 +662,14 @@ def entry(location, metapath):
     if isinstance(location, basestring):
         location = Location(location)
 
-    root = location
+    if isinstance(metapath, basestring):
+        metapath = Path(metapath)
 
-    parts = util.parse_metapath(metapath)
+    assert metapath
+
+    root = location
+    parts = metapath.parts
+
     while parts:
         try:
             pull(root)
@@ -596,7 +677,7 @@ def entry(location, metapath):
             pass
 
         current = parts.pop(0)
-        while current == '':
+        while not current:
             current = parts.pop(0)
 
         # Remove suffix for query
@@ -607,12 +688,12 @@ def entry(location, metapath):
 
         try:
             new_root = root[name]
+            # print "New root: %s" % new_root.path
 
             # If metapath included a suffix,
             # ensure the child we fetch match this suffix.
-            if suffix:
-                if new_root.path.suffix != suffix:
-                    raise KeyError
+            if suffix and new_root.path.suffix != suffix:
+                raise KeyError
 
             root = new_root
 
@@ -637,7 +718,6 @@ def write(path, metapath, value=None):
 
         entry = Entry(entry_name, parent=root)
         root = entry
-
 
     # If no suffix was specified, initialise a default suffix
     # based on `value`

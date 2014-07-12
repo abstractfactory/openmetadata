@@ -1,5 +1,13 @@
 # 0.5.3
 
+### Industry strength
+
+Tests now cover 100% of the codebase
+
+### Parent isn't a generator
+
+Before, parent was returning a generator so as to facilitate for multiple parents - such as when a directory has multiple junctions. This was considered overengineering and caused superflous code throughout the library and has been distilled down to returning a single parent.
+
 ### Path.set()
 
 Path is now mutable and may be replaced/updated via a call to set(). See docstring for examples.

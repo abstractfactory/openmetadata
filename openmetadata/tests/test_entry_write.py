@@ -41,8 +41,9 @@ class TestEntryWrite(tests.ReadWriteTestCase):
 
     def test_noname(self):
         """Not assigning a name to an entry is considered a bug"""
-        entry = om.Entry('', value='Hello', parent=self.root)
-        self.assertRaises(AssertionError, om.flush(entry))
+        self.assertRaises(AssertionError, om.Entry, '',
+                                                    value='Hello',
+                                                    parent=self.root)
 
     def test_flush_existing(self):
         """Overwrite existing entry"""

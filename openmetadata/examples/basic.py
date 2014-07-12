@@ -21,7 +21,7 @@ try:
     ostring.value = 'my simple string'
 
     # Add a list
-    olist = om.Entry('mylist.list', parent=location)
+    olist = om.Entry('mylist.dict', parent=location)
 
     # Containing three datasets..
     l1 = om.Entry('item1', value='a string value', parent=olist)

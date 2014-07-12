@@ -1,16 +1,20 @@
 
 
-class Exists(BaseException):
+class Exists(Exception):
     """Raised upon error with existance; e.g. file does not exist"""
 
 
-class RelativePath(BaseException):
+class RelativePath(Exception):
     pass
 
 
-class Suffix(BaseException):
+class Suffix(Exception):
     pass
 
 
-class Serialisation(BaseException):
+class Serialisation(Exception):
+    pass
+
+
+class Corrupt(Exception):
     pass
