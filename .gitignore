@@ -1,5 +1,8 @@
 *.pyc
 *sandbox*
+build
+dist
+*.egg-info
 $*
 *.sublime-project
 *.sublime-workspace

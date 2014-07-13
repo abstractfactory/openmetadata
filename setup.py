@@ -6,28 +6,38 @@ path = os.path.dirname(__file__)
 sys.path.insert(0, path)
 
 import openmetadata
-version = openmetadata.version
-
 from setuptools import setup, find_packages
 
-f = open('README.md')
-readme = f.read().strip()
+version = openmetadata.version
 
-f = open('LICENSE.md')
-license = f.read().strip()
-
+with open('README.txt') as f:
+    readme = f.read()
 
 
 setup(
     name='openmetadata',
     version=version,
     description='Open Metadata ',
-    # long_description=readme,
+    long_description=readme,
     author='Marcus Ottosson',
     author_email='marcus@abstractfactory.com',
     url='https://github.com/abstractfactory/openmetadata',
-    license=license,
+    license="LICENSE.txt",
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
+    entry_points={
+        'console_scripts': ['openmetadata = openmetadata.cli:main']
+    },
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Utilities'
+    ],
 )

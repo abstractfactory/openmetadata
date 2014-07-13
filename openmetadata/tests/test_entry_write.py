@@ -40,6 +40,30 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         om.write(self.root_path, '/root/test/another', 10)
         self.assertEquals(om.read(self.root_path, 'root/test/another'), 10)
 
+    def test_absolutename(self):
+        entry = om.Entry('custom.int', value=10, parent=self.root)
+        om.flush(entry)
+
+        entry = om.Entry('custom.string', value="Hello", parent=self.root)
+        om.pull(entry)
+
+        self.assertEquals(entry.type, 'int')
+
+    def test_convert(self):
+        entry = om.Entry('custom.int', value=10, parent=self.root)
+        om.flush(entry)
+
+        entry = om.convert(entry.path.as_str)
+        self.assertEquals(entry.value, 10)
+
+    def test_convert_withmissingsuffix(self):
+        entry = om.Entry('custom_missing.int', value=10, parent=self.root)
+        om.flush(entry)
+
+        new_path = entry.path.copy(suffix='string')
+        entry = om.convert(new_path.as_str)
+        self.assertEquals(entry.value, 10)
+
     def test_noname(self):
         """Not assigning a name to an entry is considered a bug"""
         self.assertRaises(AssertionError, om.Entry, '',

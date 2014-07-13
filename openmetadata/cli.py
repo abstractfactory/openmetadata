@@ -39,13 +39,23 @@ import sys
 import argparse
 import openmetadata
 
-parser = argparse.ArgumentParser()
-parser.add_argument('metapath')
-parser.add_argument('--value', default='')
-parser.add_argument('--root', default=None)
 
+def cli(metapath,
+        value='',
+        root=None,
+        verbose=False):
 
-def main(metapath, value='', root=None, verbose=False):
+    """Command-line interface interpterer
+
+    Arguments:
+        metapath (str): Full meta-path to metadata, e.g. "/address/street"
+        value (str, optional): Pass a value to write as opposed to read
+        root (str, optional): cli writes to the cwd by default, this is
+            an override, as a relative path. E.g. root="subfolder"
+        verbose (bool): Output more information
+
+    """
+
     root = root
 
     if root:
@@ -59,6 +69,10 @@ def main(metapath, value='', root=None, verbose=False):
 
     try:
         value = float(value)
+
+        if value == int(value):
+            value = int(value)
+
     except:
         pass
 
@@ -82,3 +96,16 @@ def main(metapath, value='', root=None, verbose=False):
     else:
         print openmetadata.read(path=root,
                                 metapath=metapath)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('metapath')
+    parser.add_argument('--value', default='')
+    parser.add_argument('--root', default=None)
+
+    args = parser.parse_args()
+
+    cli(metapath=args.metapath,
+        value=args.value,
+        root=args.root)
