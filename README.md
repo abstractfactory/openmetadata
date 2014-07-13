@@ -15,6 +15,37 @@ $ pip install openmetadata
 
 If you're having trouble, refer to the [Wiki](https://github.com/abstractfactory/openmetadata/wiki/Install)
 
+### Quick start
+
+```bash
+# Command-line interface
+$ mkdir Bruce
+$ cd Bruce
+$ openmetadata description --value="Turns green when angry"
+$ openmetadata description
+Turns green when angry
+$ openmetadata history --value="Absorbed some gamma radiation"
+$ openmetadata history
+Absorbed some gamma radiation
+```
+
+```python
+# Python
+>>> import shutil
+>>> import tempfile
+>>> import openmetadata
+>>> root = tempfile.mkdtemp()
+>>> openmetadata.write(root, 'age', 32)
+>>> openmetadata.write(root, 'height', 1.87)
+>>> openmetadata.read(root, 'height')
+32
+>>> openmetadata.read(root, 'age')
+1.87
+>>> shutil.rmtree(root)
+```
+
+A more in-depth tutorial is available in the [Wiki](https://github.com/abstractfactory/openmetadata/wiki/Tutorial)
+
 ### Specifications
 
 Open Metadata is built by specification, refer to the [Wiki](https://github.com/abstractfactory/openmetadata/wiki/Specifications) for more information.

@@ -41,6 +41,7 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertEquals(om.read(self.root_path, 'root/test/another'), 10)
 
     def test_absolutename(self):
+        """If entry exists, suffix will be implied by find()"""
         entry = om.Entry('custom.int', value=10, parent=self.root)
         om.flush(entry)
 
@@ -50,6 +51,7 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         self.assertEquals(entry.type, 'int')
 
     def test_convert(self):
+        """contert() is a shorthand for creating location and entry sep."""
         entry = om.Entry('custom.int', value=10, parent=self.root)
         om.flush(entry)
 
