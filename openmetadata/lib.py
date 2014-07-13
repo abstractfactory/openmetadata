@@ -16,13 +16,14 @@ Attributes:
 
 """
 
+import os
 import abc
+import time
 import json
 import logging
 
 from openmetadata import path
 from openmetadata import error
-from openmetadata import service
 
 HISTORY = '.history'
 VERSIONS = '.versions'
@@ -30,13 +31,17 @@ TRASH = '.trash'
 
 log = logging.getLogger('openmetadata.lib')
 
-osname = service.OSNAME
+osname = os.name
 path_map = {'nt': path.WindowsPath,
             'posix': path.PosixPath}
 
 Path = path.Path  # unbiased path
 DefaultPath = path_map[osname]
 MetaPath = path.MetaPath
+
+
+def _currenttime():
+    return time.strftime("%Y%m%d-%H%M%S", time.gmtime())
 
 
 _type_to_suffix = {
@@ -58,7 +63,7 @@ defaults = {
     'float':  0.0,
     'string': '',
     'text':   '',
-    'date':   service.currenttime,
+    'date':   _currenttime,
     'list':   [],
     'dict':   {}
 }
