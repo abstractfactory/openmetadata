@@ -4,6 +4,9 @@
 
 *Open Metadata* is a library used in associating metadata to folders on your file-system, designed for concurrent, high-performance and scalable digital asset management (DAM) systems.
 
+[![Build Status](https://travis-ci.org/abstractfactory/openmetadata.svg?branch=master)](https://travis-ci.org/abstractfactory/openmetadata)
+[![Coverage Status](https://coveralls.io/repos/abstractfactory/openmetadata/badge.png)](https://coveralls.io/r/abstractfactory/openmetadata)
+
 ### Installing
 
 1. Download a [release][]
