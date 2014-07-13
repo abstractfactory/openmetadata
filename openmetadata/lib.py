@@ -251,9 +251,9 @@ class Resource(object):
 
     def ls(self, _level=0):
         """List contained children"""
-        tree = '\t' * _level + self.path.name + '\n'
+        tree = '\t' * _level + self._path.name + '\n'
 
-        if self.type in ('dict', 'list'):
+        if isinstance(self, Location) or self.type in ('dict', 'list'):
             for resource in self:
                 tree += resource.ls(_level + 1)
 
