@@ -12,14 +12,15 @@ Attributes:
 """
 
 import os
+import time
 import errno
+import shutil
 import logging
 import getpass
 
 from openmetadata import lib
 from openmetadata import util
 from openmetadata import error
-from openmetadata import service
 
 log = logging.getLogger('openmetadata.api')
 
@@ -59,22 +60,56 @@ __all__ = [
     'write',
     'convert',
     'pull',
-    'remove',
+    'recycle',
     'clear',
     'find',
     'split',
     'default',
     'entry',
-    # 'find_all',
-    # 'exists',
-    # 'existing',
     'inherit',
-    # 'history',
-    # 'restore',
     'islocation',
     'isentry',
     'error'
 ]
+
+
+# ---------------------------------------------------------------------
+#
+# Helper utilities
+#
+# ---------------------------------------------------------------------
+
+
+def _currenttime():
+    return time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+
+
+def _remove(path):
+    """
+    Remove `path`, regardless of it being a file or folder.
+
+    """
+
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    elif os.path.isfile(path):
+        os.remove(path)
+    else:
+        raise TypeError("%s is not a valid path" % path)
+
+
+def _move(source, target):
+    """
+    Move `source` to `target`, creating missing
+    parts of the hierarchy is required.
+
+    """
+
+    dirname = os.path.dirname(target)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    shutil.move(source, target)
+
 
 # ---------------------------------------------------------------------
 #
@@ -151,13 +186,14 @@ def _flush_entry(resource, track_history=True):
 
     name = resource.path.name
 
+
     existing = find(parent.path.as_str, name)
     if existing:
         existing_resource = Entry(existing, parent=parent)
 
     history_resource = existing_resource or resource
     if not history_resource.type in ('dict', 'list'):
-        if track_history: # and os.path.exists(history_resource.path.as_str):
+        if track_history:
             _make_history(history_resource)
 
     #  _______________
@@ -173,7 +209,7 @@ def _flush_entry(resource, track_history=True):
         # TODO: this should really be permanent, as the copy
         # has already been stored in history. But, for safety
         # let's keep it around until someone complains about it.
-        remove(existing_resource, permanent=False)
+        recycle(existing_resource, permanent=False)
 
     #  _______________
     # |      -->      |
@@ -233,7 +269,7 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
 
     """
 
-    if not service.exists(resource.path.as_str):
+    if not os.path.exists(resource.path.as_str):
         """
         If the name of `node` has been entered manually, chances
         are that there is an existing node on disk under a different
@@ -242,7 +278,6 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
 
         """
         similar = util.find(resource.path.parent.as_str, resource.path.name)
-
         if similar:
             resource._path = resource.path.copy(path=similar)
             return pull(resource,
@@ -265,16 +300,26 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
 
     path = resource.path.as_str
     if os.path.isdir(path):
-        dirs, files = service.ls(path)
+        for _, dirs, files in os.walk(path):
+            for entry in dirs:
+                Entry(entry, parent=resource)
 
-        for entry in dirs:
-            Entry(entry, parent=resource)
+            for entry in files:
+                Entry(entry, parent=resource)
 
-        for entry in files:
-            Entry(entry, parent=resource)
+            break
 
     else:
-        value = service.open(path)  # raises error.Exists
+        try:
+            with open(path, 'r') as f:
+                value = f.read()  # raises error.Exists
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                raise error.Exists(path)
+            elif e.errno == errno.EACCES:
+                raise error.Exists("Make sure this is a file "
+                                   "and that you have the appropriate "
+                                   "permissions: {}".format(path))
 
         # Empty files return an emptry string
         if value != "":
@@ -294,15 +339,15 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
     return resource
 
 
-def remove(resource, permanent=False):
+def recycle(resource, permanent=False):
     """Remove `resource` from datastore, either to trash or permanently"""
 
-    if not service.exists(resource.path.as_str):
+    if not os.path.exists(resource.path.as_str):
         log.warning("remove(): %s did not exist" % resource.path.as_str)
         return False
 
     if permanent:
-        service.remove(resource.path.as_str)
+        _remove(resource.path.as_str)
         log.info("remote(): Permanently removed %r" % resource.path.as_str)
     else:
         trash(resource)
@@ -320,10 +365,10 @@ def trash(resource):
         trash_path = trash_path + lib.Path.CONTAINER
 
     # Ensure resource.path.name is unique in trash_path, as per RFC14
-    if service.exists(trash_path.as_str):
+    if os.path.exists(trash_path.as_str):
         for match in util.find_all(trash_path.as_str, resource.path.name):
             match_path = trash_path + match
-            service.remove(match_path.as_str)
+            _remove(match_path.as_str)
 
             log.info("remove(): Removing exisisting "
                      "%r from trash" % match_path.name)
@@ -333,9 +378,9 @@ def trash(resource):
     log.info("Fullname: %s" % resource.path.as_str)
     deleted_path = trash_path + basename
 
-    assert not service.exists(deleted_path.as_str), deleted_path
+    assert not os.path.exists(deleted_path.as_str), deleted_path
 
-    service.move(resource.path.as_str, deleted_path.as_str)
+    _move(resource.path.as_str, deleted_path.as_str)
     log.info("remove(): Successfully removed %r" % resource.path.as_str)
 
 
@@ -378,7 +423,7 @@ def _make_history(resource):
 
     # Prepare name of `imprint` (see RFC12)
     name = resource.path.name
-    imprint_time = service.currenttime()
+    imprint_time = _currenttime()
     imprint_name = "{name}{sep}{time}".format(name=name,
                                               sep=lib.Path.OPTSEP,
                                               time=imprint_time)
@@ -589,6 +634,8 @@ def read(path, metapath=None, convert=True, **kwargs):
 
     """
 
+    assert isinstance(path, basestring)
+
     # Hidden keyword arguments
     _return_root = kwargs.pop('_return_root', False)
     _return_nonexisting = kwargs.pop('_return_nonexisting', False)
@@ -668,6 +715,7 @@ def entry(location, metapath):
 
     """
 
+
     if isinstance(location, basestring):
         location = Location(location)
 
@@ -697,7 +745,6 @@ def entry(location, metapath):
 
         try:
             new_root = root[name]
-            # print "New root: %s" % new_root.path
 
             # If metapath included a suffix,
             # ensure the child we fetch match this suffix.
@@ -743,7 +790,7 @@ def clear(path):
         path = lib.Path(path)
 
     location = Location(path)
-    remove(location)
+    recycle(location)
 
 
 def islocation(resource):

@@ -1,5 +1,7 @@
+import os
+import errno
+
 from openmetadata import lib
-from openmetadata import service
 from openmetadata import error
 
 
@@ -60,7 +62,7 @@ def locations(path):
     while root:
         location_path = root + lib.Path.CONTAINER
 
-        if service.exists(location_path.as_str):
+        if os.path.exists(location_path.as_str):
             yield lib.Location(root)
 
         root = root.parent
@@ -118,7 +120,7 @@ def find_all(path, name, **kwargs):
 
     """
 
-    if not service.exists(path):
+    if not os.path.isdir(path):
         return
 
     # Ignore suffix
@@ -132,40 +134,38 @@ def find_all(path, name, **kwargs):
     # Hidden arguments
     ignore_case = kwargs.get('ignore_case', True)
 
-    if isinstance(path, basestring):
-        path = lib.Path(path)
-
     container = lib.Path.CONTAINER
-    if not container in path.as_str:
-        path = path + container
+    if not container in path:
+        path = os.path.join(path, container)
 
     try:
-        dirs_, files_ = service.ls(path.as_str)
-    except error.Exists:
-        return
+        for entry in os.listdir(path):
+            if entry.startswith('.'):
+                search_name = entry
+                search_suffix = None
 
-    for entry in dirs_ + files_:
-
-        if entry.startswith('.'):
-            search_name = entry
-            search_suffix = None
-        else:
-            try:
-                search_name, search_suffix = entry.rsplit(lib.Path.EXT, 1)
-            except ValueError:
-                search_name, search_suffix = entry, None
-
-        if ignore_case:
-            name = name.lower()
-            search_name = search_name.lower()
-
-        if search_name == name:
-            # If there was a suffix supplied, ensure they match
-            if suffix:
-                if search_suffix == suffix:
-                    yield entry
             else:
-                yield entry
+                try:
+                    search_name, search_suffix = entry.rsplit(lib.Path.EXT, 1)
+                except ValueError:
+                    search_name, search_suffix = entry, None
+
+            if ignore_case:
+                name = name.lower()
+                search_name = search_name.lower()
+
+            if search_name == name:
+                # If there was a suffix supplied, ensure they match
+                if suffix:
+                    if search_suffix == suffix:
+                        yield entry
+                else:
+                    yield entry
+
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            # Path had no metadata container
+            return
 
 
 def find(path, name):

@@ -122,7 +122,7 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         om.flush(removed)
 
         self.assertTrue(os.path.isfile(removed.path.as_str))
-        om.remove(removed)
+        om.recycle(removed)
         self.assertFalse(os.path.exists(removed.path.as_str))
 
     def test_removal_group(self):
@@ -133,7 +133,7 @@ class TestEntryWrite(tests.ReadWriteTestCase):
         om.flush(removed)
 
         self.assertTrue(os.path.isdir(removed.path.as_str))
-        om.remove(removed)
+        om.recycle(removed)
         self.assertFalse(os.path.exists(removed.path.as_str))
 
     def flush_multiple(self):
