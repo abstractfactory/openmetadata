@@ -90,14 +90,17 @@ def parse_metapath(metapath):
 def find_all(path, name, **kwargs):
     """Find `name` in `path`
 
-    Suffix:
-        If no suffix is supplied with `name`, suffixes are
-        ignored. E.g. this will return `myname.bool` if such
-        an entry exists.
-            >> find(path, 'myname')
+    If no suffix is supplied with `name`, suffixes are
+    ignored. E.g. this will return `myname.bool` if such
+    an entry exists.
+        >> find(path, 'myname')
 
-        However, this will not
-            >> find(path, 'myname.int')
+    However, this will not
+        >> find(path, 'myname.int')
+
+    Arguments:
+        path (str): Absolute path in which search takes place
+        name (str): Name, optionally including suffix, to look for
 
     Returns:
         Relative path to found entry
@@ -169,6 +172,14 @@ def find_all(path, name, **kwargs):
 
 
 def find(path, name):
+    """Find first match
+
+    Arguments:
+        path (str): Absolute path in which search takes place
+        name (str): Name, optionally including suffix, to look for
+
+    """
+
     try:
         found = find_all(path, name)
         return next(found)

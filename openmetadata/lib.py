@@ -89,7 +89,8 @@ class Resource(object):
             are used to hierarchically organise resources.
 
     Attributes:
-        isdirty:
+        path: Current path, dynamic and based on current value/children
+        old_path: Initial path, updated upon flush
 
     """
 
@@ -97,12 +98,8 @@ class Resource(object):
     log = logging.getLogger('openmetadata.lib.Resource')
 
     def __iter__(self):
-        for _, child in self._children.iteritems():
-            if self.filter:
-                if self.filter(child):
-                    yield child
-            else:
-                yield child
+        for child in self.children:
+            yield child
 
     def __getitem__(self, item):
         try:
@@ -179,12 +176,7 @@ class Resource(object):
             return path
 
         parent_path = self._parent.path
-        if hasattr(self._parent, 'resolved_path'):
-            parent_path = self._parent.resolved_path
-
-        path = parent_path + path
-
-        return path
+        return parent_path + path
 
     @property
     def name(self):
@@ -265,8 +257,12 @@ class Resource(object):
 
     @property
     def children(self):
-        for child in self._children.values():
-            yield child
+        for _, child in self._children.iteritems():
+            if self.filter:
+                if self.filter(child):
+                    yield child
+            else:
+                yield child
 
     @property
     def value(self):
@@ -280,15 +276,6 @@ class Resource(object):
     @value.setter
     def value(self, value):
         raise NotImplementedError
-
-    # def _resolve_suffix(self, value=None):
-    #     if value is None:
-    #         return self._path
-    #     else:
-    #         dt = type(value)
-
-    #     suffix = type_to_suffix(dt, hint=self.path.suffix)
-    #     return self._path.copy(suffix=suffix)
 
     @property
     def has_children(self):
@@ -347,6 +334,10 @@ class Location(Resource):
     @property
     def path(self):
         return self._path + self._path.CONTAINER
+
+    @property
+    def old_path(self):
+        return self.path
 
     @property
     def name(self):
@@ -432,7 +423,6 @@ class Entry(Resource):
 
     @value.setter
     def value(self, value):
-        # Resolve suffix
         if value is not None:
             datatype = type(value)
 
@@ -441,33 +431,11 @@ class Entry(Resource):
 
         assert self.type, self.path.as_str
 
-        # Reset isparent flag.
-        #
-        # Whether or not `self` is capable of being a parent is
-        # henceforth determined by its corresponding value.
-        #
-        # self._isparent = None
-
-        # Values are always overridden.
+        # Values always replace children
         self.clear()
 
-        if isinstance(value, list):
-            self._value = {}
-
-            index = 0
-            for child in value:
-                Entry(str(index), value=child, parent=self)
-                index += 1
-
-        elif isinstance(value, dict):
-            self._value = {}
-
-            for key, value in value.iteritems():
-                Entry(key, value=value, parent=self)
-
-        else:
-            assert json.dumps(value)
-            self._value = value
+        assert json.dumps(value)
+        self._value = value
 
     def load(self, value):
         """De-serialise `value` into `self`"""
@@ -487,17 +455,17 @@ class Entry(Resource):
 
 
 if __name__ == '__main__':
-    # import doctest
-    # doctest.testmod()
+    import doctest
+    doctest.testmod()
 
-    import tempfile
-    import openmetadata as om
-    om.setup_log('openmetadata')
+    # import tempfile
+    # import openmetadata as om
+    # om.setup_log('openmetadata')
 
-    # Starting-point
-    root = tempfile.mkdtemp()
-    location = om.Location(root)
+    # # Starting-point
+    # root = tempfile.mkdtemp()
+    # location = om.Location(root)
 
-    entry = om.Entry('app.dict', parent=location)
-    child = om.Entry('child.string', value="Hello", parent=entry)
-    print repr(child.path)
+    # entry = om.Entry('app.dict', parent=location)
+    # child = om.Entry('child.string', value="Hello", parent=entry)
+    # print repr(child.path)

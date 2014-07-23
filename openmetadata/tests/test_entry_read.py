@@ -7,13 +7,14 @@
 """
 
 import os
+import sys
 
 # Subject
 import openmetadata as om
 import openmetadata.tests
 
 
-class TestEntryRead(openmetadata.tests.ReadOnlyTestCase):
+class TestEntryRead(openmetadata.tests.FixtureTestCase):
 
     def test_pull_existing(self):
         """Read from existing metadata"""
@@ -23,12 +24,30 @@ class TestEntryRead(openmetadata.tests.ReadOnlyTestCase):
         self.assertEquals(entry.path.basename, "standard_int.int")
         self.assertEquals(entry.path.suffix, "int")
 
-    def test_read_misnamed_directory(self):
-        """A directory is without suffix:
+    def test_case_sensitivity(self):
+        case_sensitive_location = om.Location(self.case_path)
+        data = om.Entry('data', parent=case_sensitive_location)
+        om.pull(data)
+        self.assertEquals(data.value, 'value here')
 
-        /home/.meta/mygroup/somedata.string
+        wrong_case = om.Location(self.case_path.lower())
+        data = om.Entry('data', parent=wrong_case)
 
-        """
+        if sys.platform == 'win32':
+            om.pull(data)
+            self.assertEquals(data.value, 'value here')
+        else:
+            self.assertRaises(om.error.Exists, om.pull, data)
+
+    # def test_chaining_pull(self):
+    #     """pull() supports chaining"""
+
+    # def test_read_misnamed_directory(self):
+    #     """A directory is without suffix:
+
+    #     /home/.meta/mygroup/somedata.string
+
+    #     """
 
     def test_modify_existing(self):
         """Modifying an existing value with a value of the same
@@ -43,11 +62,11 @@ class TestEntryRead(openmetadata.tests.ReadOnlyTestCase):
         entry = om.Entry('nonexisting', parent=self.project)
         self.assertRaises(om.error.Exists, om.pull, entry)
 
-    def test_no_suffix_string(self):
-        """Entries without suffixes and value are considered corrupt"""
-        entry = om.Entry('nosuffix_string', parent=self.project)
-        self.assertEquals(entry.path.suffix, None)
-        self.assertRaises(om.error.Corrupt, om.pull, entry)
+    # def test_no_suffix_string(self):
+    #     """Entries without suffixes and value are considered corrupt"""
+    #     entry = om.Entry('nosuffix_string', parent=self.project)
+    #     self.assertEquals(entry.path.suffix, None)
+    #     self.assertRaises(om.error.Corrupt, om.pull, entry)
 
     def test_pull_unknown_string(self):
         """Pull from entry whose value is string but suffix is misnamed"""
@@ -74,18 +93,6 @@ class TestEntryRead(openmetadata.tests.ReadOnlyTestCase):
         entry = om.Entry('unknown_corrupt.abc', parent=self.project)
         om.pull(entry)
         self.assertEquals(entry.value, None)
-
-    # def test_existing_known_type():
-    #     value = om.read(project_path, 'standard_int.int')
-    #     # .assertEquals(value, 25)
-
-    # def test_existing_unknown_type():
-    #     value = om.read(project_path, 'unknown.abc')
-    #     # .assertEquals(value, None)
-
-    # def test_corrupt():
-    #     value = om.read(project_path, 'corrupt.string')
-    #     # .assertEquals(value, None)
 
 
 if __name__ == '__main__':

@@ -145,7 +145,7 @@ def flush(resource, track_history=True):
     commit values to disk.
 
     Arguments:
-        resource (Location/Resource): Location or Resource to flush
+        resource (Resource): Location or Resource to flush
         track_history (bool, optional): Produce history of `resource`
 
     Returns:
@@ -185,7 +185,6 @@ def _flush_entry(resource, track_history=True):
     # Track and recycle existing
 
     name = resource.path.name
-
 
     existing = find(parent.path.as_str, name)
     if existing:
@@ -265,32 +264,45 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
         error.Exists
 
     Returns:
-        Resource: The originally passed resource
+        Resource: The originally passed resource, to facilitate for
+            chaining commands.
 
     """
 
-    if not os.path.exists(resource.path.as_str):
+    path = resource.path
+
+    if not os.path.exists(path.as_str):
         """
-        If the name of `node` has been entered manually, chances
-        are that there is an existing node on disk under a different
+        If the name of `resource` has been entered manually, chances
+        are that there is an existing resource on disk under a different
         suffix. If so, find a matching name, under any suffix,
         and assume this is the one the user intended to pull from.
 
         """
-        similar = util.find(resource.path.parent.as_str, resource.path.name)
-        if similar:
-            resource._path = resource.path.copy(path=similar)
+
+        similars = list()
+        for similar in util.find_all(path.parent.as_str,
+                                     path.name):
+            similars.append(similar)
+
+        if len(similars) > 1:
+            raise error.Duplicate("Duplicate entries found "
+                                  "@ {}".format(path))
+
+        try:
+            resource._path = path.copy(path=similars[0])
+        except IndexError:
+            raise error.Exists("{} does not exist".format(path))
+        else:
             return pull(resource,
                         lazy=lazy,
                         depth=depth,
                         merge=merge,
                         _currentlevel=_currentlevel)
-        else:
-            raise error.Exists("{} does not exist".format(resource.path))
 
-    if not (isinstance(resource, Location) or resource.type):
-        raise error.Corrupt(
-            "Resource did not have type: {}".format(resource.path))
+    # if not (isinstance(resource, Location) or resource.type):
+    #     raise error.Corrupt(
+    #         "Resource did not have type: {}".format(path))
 
     if lazy and resource.has_value:
         return resource
@@ -298,7 +310,7 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
     if not merge:
         resource.clear()
 
-    path = resource.path.as_str
+    path = path.as_str
     if os.path.isdir(path):
         for _, dirs, files in os.walk(path):
             for entry in dirs:
@@ -312,7 +324,7 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
     else:
         try:
             with open(path, 'r') as f:
-                value = f.read()  # raises error.Exists
+                value = f.read()
         except IOError as e:
             if e.errno == errno.ENOENT:
                 raise error.Exists(path)
@@ -321,7 +333,7 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
                                    "and that you have the appropriate "
                                    "permissions: {}".format(path))
 
-        # Empty files return an emptry string
+        # Empty files return an empty string
         if value != "":
             resource.load(value)
 
@@ -340,7 +352,16 @@ def pull(resource, lazy=False, depth=1, merge=False, _currentlevel=1):
 
 
 def recycle(resource, permanent=False):
-    """Remove `resource` from datastore, either to trash or permanently"""
+    """Remove `resource` from datastore, either to trash or permanently
+
+    Arguments:
+        resource (Resource): Resource to recycle
+        permanent (bool): Either remove from disk, or store in trash
+
+    Returns:
+        True if successful, False otherwise.
+
+    """
 
     if not os.path.exists(resource.path.as_str):
         log.warning("remove(): %s did not exist" % resource.path.as_str)
@@ -356,6 +377,16 @@ def recycle(resource, permanent=False):
 
 
 def trash(resource):
+    """Move resource `resource` to trash bin
+
+    Arguments:
+        resource (Resource): Resource to move to trash
+
+    Returns:
+        None
+
+    """
+
     trash_path = resource.path.parent + lib.TRASH
 
     if not lib.Path.CONTAINER in trash_path.as_str:

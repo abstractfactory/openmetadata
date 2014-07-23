@@ -53,7 +53,7 @@ class Path(object):
         return self.as_str or ''
 
     def __repr__(self):
-        return u"%s(%r)" % (self.__class__.__name__, self.__str__())
+        return u"%s(%r)" % (type(self).__name__, self.__str__())
 
     def __hash__(self):
         return hash(self.as_str)
@@ -161,7 +161,7 @@ class Path(object):
                 path = path[:-(len(current_suffix) + 1)]
             path = path + self.EXT + suffix
 
-        return self.__class__(path)
+        return type(self)(path)
 
     @classmethod
     def parse(cls, path):
@@ -305,7 +305,7 @@ class Path(object):
         """
 
         path = self._path.split(self.CONTAINER, 1)[0]
-        return self.__class__(path)
+        return type(self)(path)
 
     @property
     def parent(self):
@@ -336,7 +336,7 @@ class Path(object):
             # parent = '/'
             return None
 
-        return self.__class__(parent)
+        return type(self)(parent)
 
     @property
     def parents(self):

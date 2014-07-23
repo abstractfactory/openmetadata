@@ -10,7 +10,7 @@ import openmetadata as om
 from openmetadata import tests
 
 
-class TestTypes(tests.ReadWriteTestCase):
+class TestTypes(tests.DynamicTestCase):
     def test_int(self):
         name = 'integer'
         value = 10

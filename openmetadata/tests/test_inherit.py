@@ -6,7 +6,7 @@ import openmetadata as om
 from openmetadata import tests
 
 
-class TestInheritWrite(tests.ReadWriteTestCase):
+class TestInheritWrite(tests.DynamicTestCase):
     def test_inherit_existing(self):
         """Inherit from existing entry
 
@@ -36,7 +36,7 @@ class TestInheritWrite(tests.ReadWriteTestCase):
         self.assertEquals(height.value, 100)
 
 
-class TestInheritRead(tests.ReadOnlyTestCase):
+class TestInheritRead(tests.FixtureTestCase):
     def test_inherit(self):
         """Inherit property from parenthood
 

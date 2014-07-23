@@ -2,7 +2,7 @@ import openmetadata as om
 import openmetadata.tests
 
 
-class TestRead(openmetadata.tests.ReadOnlyTestCase):
+class TestRead(openmetadata.tests.FixtureTestCase):
     def test_existing(self):
         """Read from existing metadata"""
         value = om.read(self.project_path, 'height')

@@ -6,6 +6,7 @@ Open Metadata is a Python library used in associating metadata to folders on you
 
 [![Build Status](https://travis-ci.org/abstractfactory/openmetadata.svg?branch=master)](https://travis-ci.org/abstractfactory/openmetadata)
 [![Coverage Status](https://coveralls.io/repos/abstractfactory/openmetadata/badge.png?branch=master)](https://coveralls.io/r/abstractfactory/openmetadata?branch=master)
+[![PyPI version](https://badge.fury.io/py/openmetadata.svg)](http://badge.fury.io/py/openmetadata)
 
 ### Installing
 

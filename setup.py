@@ -17,7 +17,7 @@ with open('README.txt') as f:
 setup(
     name='openmetadata',
     version=version,
-    description='Open Metadata ',
+    description='Open Metadata',
     long_description=readme,
     author='Marcus Ottosson',
     author_email='marcus@abstractfactory.com',
@@ -39,5 +39,5 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Utilities'
-    ],
+    ]
 )

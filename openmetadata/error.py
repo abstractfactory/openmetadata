@@ -18,3 +18,7 @@ class Serialisation(Exception):
 
 class Corrupt(Exception):
     pass
+
+
+class Duplicate(Exception):
+    pass

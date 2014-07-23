@@ -15,7 +15,7 @@ import openmetadata as om
 from openmetadata import tests
 
 
-class TestEntryWrite(tests.ReadWriteTestCase):
+class TestEntryWrite(tests.DynamicTestCase):
     def test_integration(self):
         """Test a combination of features"""
         entry = om.Entry('test.string', value="Hello", parent=self.root)
