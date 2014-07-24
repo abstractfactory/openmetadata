@@ -7,6 +7,7 @@ import tempfile
 
 # subject
 import openmetadata as om
+import openmetadata.path
 
 # vendor
 from openmetadata.vendor.click.testing import CliRunner
@@ -174,7 +175,7 @@ class FixtureTestCase(BaseTestCase):
         """
 
         hierarchy = """
-        .meta:
+        CONTAINER:
             deep.dict:
                 data.dict:
                     key.string: "value"
@@ -183,7 +184,7 @@ class FixtureTestCase(BaseTestCase):
             simple.string: "value"
 
         CaseSensitive:
-            .meta:
+            CONTAINER:
                 data.string: "value here"
 
         empty:
@@ -192,11 +193,12 @@ class FixtureTestCase(BaseTestCase):
             content:
                 jobs:
                     spiderman:
-                        .meta:
+                        CONTAINER:
                             apps.dict:
                                 houdini.dict:
                                 maya.dict:
                                     name.string: "Maya 2015 Base"
+                                    version.int: 2015
                             deep.dict:
                                 subdeep.dict:
                                     value.string: "Value"
@@ -209,13 +211,13 @@ class FixtureTestCase(BaseTestCase):
                             unknown_corrupt.abc: _corrupt_
                             unknown_string.abc: "this is of type string"
                         1000:
-                            .meta:
+                            CONTAINER:
                                 apps.dict:
                                     houdini.dict:
                                     maya.dict:
                                         name.string: "Maya 2015 Shot 1000"
 
-        """
+        """.replace('CONTAINER', openmetadata.path.Path.CONTAINER)
 
         root_path = tempfile.mkdtemp()
         project_path = os.path.join(root_path,

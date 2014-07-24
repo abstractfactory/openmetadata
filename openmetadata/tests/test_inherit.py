@@ -6,7 +6,7 @@ import openmetadata as om
 from openmetadata import tests
 
 
-class TestInheritWrite(tests.DynamicTestCase):
+class TestInheritWrite(tests.FixtureTestCase):
     def test_inherit_existing(self):
         """Inherit from existing entry
 
@@ -34,6 +34,19 @@ class TestInheritWrite(tests.DynamicTestCase):
         om.inherit(height)
 
         self.assertEquals(height.value, 100)
+
+    def test_inherit(self):
+        """Inherit"""
+        child_path = os.path.join(self.project_path, '1000')
+        child_entry = om.entry(child_path, 'apps/maya/version')
+        om.inherit(child_entry)
+        self.assertEquals(child_entry.value, 2015)
+
+    def test_inherit_nonexisting(self):
+        child_path = os.path.join(self.project_path, '1000')
+        child_entry = om.entry(child_path, 'apps/maya/notexist')
+        om.inherit(child_entry)
+        self.assertEquals(child_entry.value, None)
 
 
 class TestInheritRead(tests.FixtureTestCase):

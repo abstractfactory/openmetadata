@@ -64,8 +64,6 @@ defaults = {
     'string': '',
     'text':   '',
     'date':   _currenttime,
-    'list':   [],
-    'dict':   {}
 }
 
 
@@ -90,7 +88,6 @@ class Resource(object):
 
     Attributes:
         path: Current path, dynamic and based on current value/children
-        old_path: Initial path, updated upon flush
 
     """
 
