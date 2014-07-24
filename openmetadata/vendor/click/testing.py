@@ -1,9 +1,10 @@
 import os
 import sys
-import click
 import shutil
 import tempfile
 import contextlib
+
+from openmetadata.vendor import click
 
 from ._compat import iteritems, PY2
 
