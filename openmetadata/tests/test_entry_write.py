@@ -50,6 +50,13 @@ class TestEntryWrite(tests.DynamicTestCase):
 
         self.assertEquals(entry.type, 'int')
 
+    def test_invalidname(self):
+        """Try writing metadata with characters unsupported by the OS"""
+        self.assertRaises(ValueError, om.Entry,
+                          '%^&*.string',
+                          value="invalid",
+                          parent=self.root)
+
     def test_convert(self):
         """contert() is a shorthand for creating location and entry sep."""
         entry = om.Entry('custom.int', value=10, parent=self.root)

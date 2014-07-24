@@ -12,6 +12,7 @@ class Path(object):
 
     Based on PEP-428 a.k.a. pathlib
     http://www.python.org/dev/peps/pep-0428
+    ::
 
      ___________       _________
     |           |     |         |
@@ -31,23 +32,43 @@ class Path(object):
     |__________|      |_________|
 
 
+    Attributes:
+        log: Current logger for object
+
+        EXT: Separator for extension/suffix
+        PARENT_DIR: Relative directory specifier for parent directory
+        CURRENT_DIR: Relative directory specifier for current directory
+        CONTAINER: Name of container for metadata, all metadata is stored
+            within this directory.
+        SEP: Default separator
+        METASEP: Default separator for metapaths
+        PROCSEP: Internal separator used in processing of paths
+        QUERYSEP: See wiki on Uniform Resource Locator
+        FRAGMENTSEP: See wiki on Uniform Resource Locator
+
+        SuffixPattern: Regex for suffix
+        EscapePattern: Regex for double back-slashes
+        MultipleSlashPattern: Regex for multiple forward-slashes
+        SupportedCharactersPattern: Regex for all supported characters
+
     """
 
     log = logging.getLogger('openmetadata.path.Path')
 
     EXT = '.'
-    PARENT_DIR = '..'  # Used in resolving relative path
-    CURRENT_DIR = '.'  # -||-
+    PARENT_DIR = '..'
+    CURRENT_DIR = '.'
     CONTAINER = '.meta'
-    SEPARATOR = '/'  # Default separator
-    OPTSEP = '&'     # Option separator
-    METASEP = '/'    # Separator of metapaths
-    PROCSEP = '/'    # Separator of `processing` (see above)
-    FAMILY = None
+    SEP = '/'
+    METASEP = '/'
+    PROCSEP = '/'
+    QUERYSEP = "&"
+    FRAGMENTSEP = "#"
 
     SuffixPattern = re.compile(r'\..*$')
     EscapePattern = re.compile(r'\\')
     MultipleSlashPattern = re.compile(r'(/)\1+')
+    SupportedCharactersPattern = re.compile(r'[&/:\w\. =-]*')
 
     def __str__(self):
         return self.as_str or ''
@@ -68,7 +89,7 @@ class Path(object):
         return str(other) != self.as_str
 
     def __add__(self, other):
-        sep = self.SEPARATOR
+        sep = self.SEP
         new_path = sep.join([self.as_str, str(other)])
         return self.copy(path=new_path)
 
@@ -85,13 +106,13 @@ class Path(object):
 
         assert isinstance(path, basestring), path
 
-        path = self.parse(path)
-
-        self._path = path
+        self._path = None
         self.__suffix = None
 
+        self.set(path)
+
     def set(self, path):
-        """Replace current path with `path`
+        """Parse and replace current path with `path`
 
         Example:
             # General usage
@@ -110,15 +131,23 @@ class Path(object):
 
         """
 
+        path = self.parse(path)
+
+        supported = self.SupportedCharactersPattern.findall(path)
+        unsupported = path.strip("".join(supported))
+        if unsupported:
+            raise ValueError(
+                "Unsupported character found in path: %s" % unsupported)
+
         # Clear memoized cache
         if hasattr(self, '_as_str'):
             delattr(self, '_as_str')
 
-        self._path = type(self)(path)._path
+        self._path = path
 
     def copy(self, path=None, basename=None, suffix=None):
         """
-        Example
+        Example:
             >>> path = Path('/home/marcus/file.exe')
             >>> path.copy()
             Path('/home/marcus/file.exe')
@@ -168,14 +197,14 @@ class Path(object):
         """Conform incoming `path` to using only single forward slashes"""
         path_ = re.sub(Path.EscapePattern, '/', path)
         path_ = re.sub(Path.MultipleSlashPattern, r'\1', path_)
-        path_ = path_.replace(cls.SEPARATOR, '/')
+        path_ = path_.replace(cls.SEP, '/')
         path_ = path_.rstrip('/')
 
         parts = path_.split("/")
         for part in list(parts):
             # Resolve "parent" dir
             #
-            # Example
+            # Example:
             #   /absolute/path/with/../..   --> /absolute
             #   /absolute/../absolute       --> /absolute
             #   /absolute/.                 --> /absolute
@@ -187,7 +216,7 @@ class Path(object):
 
             # Resolve "current" dir
             #
-            # Example
+            # Example:
             #   /my/absolute/path/.         --> /my/absolute/path
             #
             if part == cls.CURRENT_DIR:
@@ -208,14 +237,14 @@ class Path(object):
 
         """
 
-        path = self._path.replace('/', self.SEPARATOR)
+        path = self._path.replace('/', self.SEP)
         return path
 
     @property
     def name(self):
         """Return name excluding suffix, excluding CONTAINER
 
-        Example
+        Example:
             >>> path = Path(r'c:\users\marcus.test')
             >>> path.name
             'marcus'
@@ -242,7 +271,7 @@ class Path(object):
     def basename(self):
         """Return name including suffix
 
-        Example
+        Example:
             >>> path = Path(r'c:\users\marcus.text')
             >>> path.basename
             'marcus.text'
@@ -267,7 +296,7 @@ class Path(object):
         A metapath is the full path to a particular
         set of metadata within a location, excluding suffixes.
 
-        Example
+        Example:
             >>> path = Path('/home/marcus/.meta/group.list/dataset.int')
             >>> path.meta
             MetaPath('/group/dataset')
@@ -291,7 +320,7 @@ class Path(object):
     @property
     def location(self):
         """
-        Example
+        Example:
             >>> path = Path('/home/user/.meta/address/street')
             >>> path.location
             Path('/home/user')
@@ -314,7 +343,7 @@ class Path(object):
         The pure parent is that which can be derived simply by
         parsing the string value of the path.
 
-        Example
+        Example:
             >>> path = Path('/home/marcus')
             >>> path.parent
             Path('/home')
@@ -331,7 +360,7 @@ class Path(object):
         parent = path.rsplit('/', 1)[0]
 
         if not parent or parent == path:
-            # parent is '' when path == SEPARATOR
+            # parent is '' when path == SEP
             # parent == _path when _path is root
             # parent = '/'
             return None
@@ -342,7 +371,7 @@ class Path(object):
     def parents(self):
         r"""Return each parent as absolute paths
 
-        Example
+        Example:
             >> path = WindowsPath(r'c:\windows\system32')
             >> assert (path.parents == ['c:\\', 'c:\\windows'])
 
@@ -360,7 +389,7 @@ class Path(object):
     def parts(self):
         r"""Return each component of a `path`
 
-        Example
+        Example:
             >>> path = Path('/home/marcus/file.exe')
             >>> path.parts
             ['', 'home', 'marcus', 'file.exe']
@@ -398,7 +427,7 @@ class Path(object):
     @property
     def suffix(self):
         """
-        Example
+        Example:
             >>> path = Path('/root/child.ext')
             >>> path.suffix
             'ext'
@@ -438,7 +467,7 @@ class Path(object):
     def as_str(self):
         """Return the composed version of `path`
 
-        Example
+        Example:
             >>> input_value = '/root/child'
             >>> path = Path(input_value)
             >>> return_value = input_value
@@ -484,12 +513,12 @@ class WindowsPath(DirPath):
         drive as just another folder, the root being one level
         above the drive.
 
-        Example
+        Example:
             c:\windows\system32 == \c\windows32\system32
 
     """
 
-    SEPARATOR = '\\'
+    SEP = '\\'
 
     DrivePattern = re.compile(r'^\w:')
 
@@ -514,13 +543,13 @@ class WindowsPath(DirPath):
             # to make '/' represent a logical folder
             # _above_ all drives.
             #
-            # Example
+            # Example:
             #   WindowsNode('/').children
             #       -> returns available drives.
             if self.root == path:
                 return 'c:\\'
 
-            path = self.drive + self.SEPARATOR + path[3:]
+            path = self.drive + self.SEP + path[3:]
 
         return path
 

@@ -456,7 +456,7 @@ def _make_history(resource):
     name = resource.path.name
     imprint_time = _currenttime()
     imprint_name = "{name}{sep}{time}".format(name=name,
-                                              sep=lib.Path.OPTSEP,
+                                              sep=lib.Path.QUERYSEP,
                                               time=imprint_time)
     # Get previous value
     old_value = pull(copy).value

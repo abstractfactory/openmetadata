@@ -28,6 +28,7 @@ class TestEntryRead(openmetadata.tests.FixtureTestCase):
         case_sensitive_location = om.Location(self.case_path)
         data = om.Entry('data', parent=case_sensitive_location)
         om.pull(data)
+
         self.assertEquals(data.value, 'value here')
 
         wrong_case = om.Location(self.case_path.lower())

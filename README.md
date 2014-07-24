@@ -22,11 +22,11 @@ If you're having trouble, refer to the [Wiki](https://github.com/abstractfactory
 # Command-line interface
 $ mkdir Bruce
 $ cd Bruce
-$ openmetadata description --value="Turns green when angry"
-$ openmetadata description
+$ om write description --value="Turns green when angry"
+$ om read description
 Turns green when angry
-$ openmetadata history --value="Absorbed some gamma radiation"
-$ openmetadata history
+$ om write history --value="Absorbed some gamma radiation"
+$ om read history
 Absorbed some gamma radiation
 ```
 

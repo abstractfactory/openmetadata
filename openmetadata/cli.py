@@ -6,106 +6,142 @@ the `root` flag. See example below.
 
 Example:
     $ cd /home/marcus
-    $ openmetadata message --value="Hello World"
-    $ openmetadata message
+    $ om write message "Hello World"
+    $ om read message
     Hello World
-    $ openmetadata message --value="Hello World" --root="/home/marcus"
-    $ openmetadata message --root="/home/marcus"
+    $ om write message "Hello World" --root="/home/marcus"
+    $ om read message --root="/home/marcus"
     Hello World
 
-Datatypes:
-    As inpute from the command-line is all strings, certain types are
-    automatically cast to their relevant types. Those are:
+    Relative path
+    -------------
 
-    - bool
-    - None
-    - int/float
-
-Relative path:
     The cli will use your current working directory if no root is
     specified. You can specify either an absolute or relative path:
 
-    $ # This will join your cwd with "Building"
-    $ openmetadata Asset.class --root=Building
+    # This will join your cwd with "Building"
+    $ om write Asset.class --root=Building
 
-    $ # This will instead refer to an absolute path
-    $ openmetadata Asset.class --root=c:\Building
+    # This will instead refer to an absolute path
+    $ om write Asset.class --root=c:\Building
 
 
 """
 
 import os
 import sys
-import argparse
 import openmetadata
+import openmetadata.upgrade
+
+from openmetadata.vendor import click
 
 
-def cli(metapath,
-        value='',
-        root=None,
-        verbose=False):
+@click.group()
+@click.option("--verbose", default=False)
+@click.pass_context
+def main(ctx, verbose):
+    if not ctx.obj:
+        ctx.obj = dict()
 
-    """Command-line interface interpterer
+    ctx.obj['verbose'] = verbose
+    verbose = verbose
 
-    Arguments:
-        metapath (str): Full meta-path to metadata, e.g. "/address/street"
-        value (str, optional): Pass a value to write as opposed to read
-        root (str, optional): cli writes to the cwd by default, this is
-            an override, as a relative path. E.g. root="subfolder"
-        verbose (bool): Output more information
+
+@click.command()
+@click.argument("path")
+@click.option("--value", default=None)
+@click.option("--root", default=None)
+@click.pass_context
+def write(ctx, path, value, root):
+    """Write metadata.
+
+    \b
+    Usage:
+        $ openmetadata write my_variable --value="Hello World"
+        $ openmetadata write another_var --value=5
 
     """
 
-    root = root
+    root = os.path.abspath(root) or os.getcwd()
 
-    if root:
-        root = os.path.abspath(root)
+    openmetadata.write(path=root,
+                       metapath=path,
+                       value=value)
+
+    if ctx.obj.get('verbose'):
+        sys.stdout.write("Success")
+
+
+@click.command()
+@click.argument("path")
+@click.option("--root", default=None)
+@click.pass_context
+def read(ctx, path, root):
+    """Read metadata.
+
+    \b
+    Usage:
+        $ openmetadata read my_variable
+        Hello World
+        $ openmetadata read another_var
+        5
+
+    """
+
+    root = os.path.abspath(root) or os.getcwd()
+
+    sys.stdout.write(openmetadata.read(path=root,
+                                       metapath=path))
+
+
+@click.command()
+@click.argument("mode", default="walk")
+@click.option("--root", default=None)
+@click.pass_context
+def upgrade(ctx, mode, root):
+    """Upgrade datastore to latest version.
+
+    When an upgrade takes place, metadata is re-formatted to
+    conform with the latest versions of Open Metadata. History
+    for each completed formatting is stored at the root of
+    the upgrade and may be invokated via a call to "restore".
+
+    See below for an example.
+
+    \b
+    Usage:
+        $ # Upgrade an old hierarchy to the latest version.
+        $ openmetadata upgrade walk --root=subfolder
+        $ # Roll back changes, leavning the datastore as
+        $ # it was prior to running the upgrade.
+        $ openmetadata upgrade restore
+
+    """
+
+    root = os.path.abspath(root) or os.getcwd()
+
+    if mode == "walk":
+        openmetadata.upgrade.walk(root)
+
+    elif mode == "cwd":
+        openmetadata.upgrade.cwd(root)
+
+    elif mode == "restore":
+        openmetadata.upgrade.restore(root)
+
     else:
-        root = os.getcwd()
-
-    value = value
-
-    # Cast input
-
-    try:
-        value = float(value)
-
-        if value == int(value):
-            value = int(value)
-
-    except:
-        pass
-
-    if value == 'None':
-        value = None
-
-    elif value == 'True':
-        value = True
-
-    elif value == 'False':
-        value = False
-
-    if value is not '':
-        openmetadata.write(path=root,
-                           metapath=metapath,
-                           value=value)
-
-        if verbose:
-            sys.stdout.write("Success")
-
-    else:
-        print openmetadata.read(path=root,
-                                metapath=metapath)
+        print "Mode not recognised"
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('metapath')
-    parser.add_argument('--value', default='')
-    parser.add_argument('--root', default=None)
+@click.command()
+@click.argument('echo', default="Hello world")
+@click.option('--value', default=None)
+@click.pass_context
+def echo(ctx, echo, value):
+    print echo, value
 
-    args = parser.parse_args()
 
-    cli(metapath=args.metapath,
-        value=args.value,
-        root=args.root)
+main.add_command(write)
+main.add_command(read)
+main.add_command(upgrade)
+main.add_command(echo)

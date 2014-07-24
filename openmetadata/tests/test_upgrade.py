@@ -13,15 +13,15 @@ class UpgradeModuleTests(tests.InteractiveTestCase):
 
         types = self.counts()
 
-        self.assertEquals(types['total'], 15)
-        self.assertEquals(types['dict'], 5)
+        self.assertEquals(types.get('total', 0), 15)
+        self.assertEquals(types.get('dict', 0), 5)
 
-        upgrade.hierarchy(self.root_path)
+        upgrade.walk(self.root_path)
 
         types = self.counts()
 
-        self.assertEquals(types['total'], 15)
-        self.assertEquals(types['dict'], 9)
+        self.assertEquals(types.get('total', 0), 15)
+        self.assertEquals(types.get('dict', 0), 9)
 
     def test_restore(self):
         """Make new 0.5.2 hierarchy, upgrade, and restore"""
@@ -46,20 +46,20 @@ class UpgradeModuleTests(tests.InteractiveTestCase):
         self.make_hierarchy(root, hierarchy)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 3)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 3)
 
-        upgrade.hierarchy(root)
+        upgrade.walk(root)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 6)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 6)
 
         upgrade.restore(root)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 3)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 3)
 
     def test_restore_invalid(self):
         """Make invalid 0.5.2 hierarchy, upgrade, and restore"""
@@ -84,20 +84,20 @@ class UpgradeModuleTests(tests.InteractiveTestCase):
         self.make_hierarchy(root, hierarchy)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 1)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 1)
 
-        upgrade.hierarchy(root)
+        upgrade.walk(root)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 2)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 2)
 
         upgrade.restore(root)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 1)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 1)
 
         # Once restored, there shouldn't be a history left
         self.assertFalse(
@@ -127,15 +127,15 @@ class UpgradeModuleTests(tests.InteractiveTestCase):
         self.make_hierarchy(root, hierarchy)
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 4)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 4)
 
-        history = upgrade.hierarchy(root)
+        history = upgrade.walk(root)
         self.assertEquals(history, list())
 
         types = self.counts(root)
-        self.assertEquals(types['total'], 11)
-        self.assertEquals(types['dict'], 4)
+        self.assertEquals(types.get('total', 0), 11)
+        self.assertEquals(types.get('dict', 0), 4)
 
         # No history was captured
         self.assertRaises(ValueError, upgrade.restore, root)
@@ -159,7 +159,7 @@ class UpgradeModuleTests(tests.InteractiveTestCase):
         self.assertEquals(types.get('total', 0), 4)
         self.assertEquals(types.get('dict', 0), 0)
 
-        upgrade.hierarchy(root)
+        upgrade.walk(root)
 
         self.assertTrue(upgrade.restorable(root))
 
@@ -178,6 +178,21 @@ class UpgradeModuleTests(tests.InteractiveTestCase):
 
         self.assertFalse(os.path.isfile(old_path))
         self.assertTrue(os.path.isfile(new_path))
+
+    def test_rename_nonexisting(self):
+        self.assertRaises(upgrade.UpgradeError,
+                          upgrade._rename,
+                          src='not/exist', dest='not/exist_')
+
+    def test_upgrade_nonexisting(self):
+        """Upgrade non-existing root"""
+
+        root = os.path.join(self.root_path, 'root4')
+
+        # root doesn't exist
+
+        self.assertRaises(upgrade.UpgradeError, upgrade.walk, root)
+
 
 if __name__ == '__main__':
     import nose

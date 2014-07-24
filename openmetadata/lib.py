@@ -442,7 +442,7 @@ class Entry(Resource):
         try:
             self.value = json.loads(value)
         except ValueError:
-            log.warning("%s contains invalid value" % self.path)
+            log.warning("%s contains invalid value: %r" % (self.path, value))
             self.value = None
 
     def dump(self):

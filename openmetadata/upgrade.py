@@ -1,8 +1,13 @@
 """Automatic upgrade of hierarchy for migration to newer versions
 
 This module is meant as an an alternative to manual migration and is
-designed to be idempotent and safe. An history
+designed to be idempotent and safe. The upgrade is recorded and may be
+restored at a later time via :func:restore()
 
+Upgrading is non-atomic; meaning that data is written regardless of
+future failures. This is so that even though the operation may fail,
+history is still written so that you may still restore the original
+hierarchy.
 
 Attributes:
     LOG: Logger
@@ -11,17 +16,26 @@ Attributes:
 
 """
 
+# Standard library
 import os
 import time
 import errno
 import logging
+
+# Local library
 import openmetadata.path
-from openmetadata.vendor import click
 
 LOG = logging.getLogger('openmetadata.upgrade')
 CONTAINER = openmetadata.path.Path.CONTAINER
 ATTEMPTS = 10
 HISTORY_FILE = '_history'
+
+
+# ---------------------------------------------------------------------
+#
+# Exceptions
+#
+# ---------------------------------------------------------------------
 
 
 class UpgradeError(Exception):
@@ -32,25 +46,14 @@ class HistoryError(Exception):
     pass
 
 
-@click.command()
-@click.option('--test', default=False)
-def cli(test):
-    print test
+# ---------------------------------------------------------------------
+#
+# Body
+#
+# ---------------------------------------------------------------------
 
 
-def hierarchy_cli(root=None):
-    return hierarchy(root)
-
-
-def container_cli(root=None):
-    return container(root)
-
-
-def restore_cli(root=None):
-    return restore(root)
-
-
-def hierarchy(root=None):
+def walk(root=None):
     """Upgrade all metadata within hierarchy starting at `root`
 
     Arguments:
@@ -68,15 +71,21 @@ def hierarchy(root=None):
     history = list()
 
     history_path = os.path.join(root, HISTORY_FILE)
-    with open(history_path, 'a') as f:
-        for base, dirs, _ in os.walk(root, topdown=True):
-            if base.endswith(CONTAINER):
-                container_history = container(root=base, file_handle=f)
-                if container_history:
-                    history.append(container_history)
 
-                # Do not walk into container
-                dirs[:] = []
+    try:
+        with open(history_path, 'a') as f:
+            for base, dirs, _ in os.walk(root, topdown=True):
+                if base.endswith(CONTAINER):
+                    cwd_history = cwd(root=base, file_handle=f)
+                    if cwd_history:
+                        history.append(cwd_history)
+
+                    # Do not walk into cwd
+                    dirs[:] = []
+
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            raise UpgradeError("Root doesn't exist: %s" % root)
 
     if history:
         LOG.info("Successfully upgraded {}, to restore run upgrade.restore")
@@ -86,8 +95,8 @@ def hierarchy(root=None):
     return history
 
 
-def container(root=None, file_handle=None):
-    """Upgrade metadata just within the container at `root`
+def cwd(root=None, file_handle=None):
+    """Upgrade metadata just within the current working directory
 
     The rule is that directories without suffix are assumed
     to be of type dict.
@@ -169,7 +178,6 @@ def restore(root=None):
     history_path = os.path.join(root, HISTORY_FILE)
 
     try:
-        print "# Opening %s" % history_path
         with open(history_path, 'r') as f:
             history = f.read()
     except IOError as e:
@@ -209,64 +217,94 @@ def restorable(root=None):
     return os.path.isfile(history_path)
 
 
+# ---------------------------------------------------------------------
+#
+# Helpers
+#
+# ---------------------------------------------------------------------
+
+
 def _rename(src, dest):
+    """Rename with attempts
+
+    Upon failures on writes, attempt again after a fixed amount
+    of times. If other errors occurs, raise an exception.
+
+    Raises:
+        UpgradeError: upon any errors
+
+    """
+
     for attempt in xrange(ATTEMPTS):
         try:
             os.rename(src, dest)
-        except IOError as exc:
+        except EnvironmentError as e:
+            print "# EXCEPTION: %s" % errno.errorcode[e.errno]
+
+            if e.errno == errno.ENOENT:
+                raise UpgradeError("Source did not exist: %s" % src)
+
+            elif e.errno == errno.EACCES:
+                raise UpgradeError("Source not writable: %s" % src)
+
+            # In all other cases, sleep and try again
             LOG.warning("Failed attempt {}".format(attempt))
             time.sleep(0.1)
+
         else:
             return
 
-    raise UpgradeError("Could not rename {} -> {}".format(src, exc))
+    raise UpgradeError("Could not rename {} -> {}".format(src, e))
 
 
 def _write(file_handle, line):
+    """Write to disk with attempts.
+
+    Arguments:
+        file_handle (file): Handle to write to
+        line (string): Data to write, in the form of "old -> new"
+
+    """
+
     for attempt in xrange(ATTEMPTS):
         try:
             file_handle.write(line)
-        except IOError as exc:
+        except EnvironmentError as e:
+
+            if e.errno == errno.ENOENT:
+                raise UpgradeError(
+                    "Source did not exist: %s" % file_handle.name)
+
+            if e.errno == errno.EACCES:
+                raise UpgradeError(
+                    "Source not writable: %s" % file_handle.name)
+
+            # In all other cases, sleep and try again
             LOG.warning("Failed attempt {}".format(attempt))
             time.sleep(0.1)
         else:
             return
 
-    raise IOError("Failed to write to {}: {}".format(file_handle.name, exc))
+    raise UpgradeError("Failed to write to {}: {}".format(file_handle.name, e))
 
 
 def _remove(src):
-    exc = None
     for attempt in xrange(ATTEMPTS):
         try:
             os.remove(src)
-        except Exception as e:
+        except EnvironmentError as e:
+
+            if e.errno == errno.ENOENT:
+                raise UpgradeError("Source did not exist: %s" % src)
+
+            if e.errno == errno.EACCES:
+                raise UpgradeError("Source not writable: %s" % src)
+
+            # In all other cases, sleep and try again
             LOG.warning("Failed attempt {}".format(attempt))
             time.sleep(0.1)
-            exc = e
+
         else:
             return
 
-    raise IOError("Could not rename {} -> {}".format(src, exc))
-
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--hierarchy', action='store_true', default=False)
-    parser.add_argument('--container', action='store_true', default=False)
-    parser.add_argument('--restore', action='store_true', default=False)
-
-    args = parser.parse_args()
-    if (args.hierarchy + args.container + args.restore) != 1:
-        print "See help for instructions on how to use this utility"
-
-    elif args.hierarchy:
-        hierarchy()
-
-    elif args.container:
-        container()
-
-    elif args.restore:
-        restore()
+    raise UpgradeError("Could not rename {} -> {}".format(src, e))

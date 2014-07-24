@@ -13,6 +13,17 @@ version = openmetadata.version
 with open('README.txt') as f:
     readme = f.read()
 
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 2',
+    'Programming Language :: Python :: 2.6',
+    'Programming Language :: Python :: 2.7',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Utilities'
+]
 
 setup(
     name='openmetadata',
@@ -27,17 +38,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     entry_points={
-        'console_scripts': ['openmetadata = openmetadata.cli:main']
+        'console_scripts': ['openmetadata = openmetadata.cli:main',
+                            'om = openmetadata.cli:main']
     },
-    classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-        'Topic :: Utilities'
-    ]
+    classifiers=classifiers
 )
