@@ -128,11 +128,15 @@ class Resource(object):
         return hash(str(self))
 
     @abc.abstractmethod  # Prevent direct instantiation
-    def __init__(self, path, value=None, parent=None):
+    def __init__(self, path, value=None, parent=None, type=None):
         assert path is not ''
 
         if isinstance(path, basestring):
             path = Path(path)
+
+            # Argument overrides implicit suffix in path
+            if type:
+                path = path.copy(suffix=type)
 
         self._path = path
         self._value = value
