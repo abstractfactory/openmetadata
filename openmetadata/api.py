@@ -127,7 +127,7 @@ def push():
     pass
 
 
-def flush(resource, track_history=True):
+def flush(resource, track_history=False):
     """Commit pending values to the data-store
 
     The flush occurs in three stages; find, track and

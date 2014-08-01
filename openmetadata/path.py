@@ -68,7 +68,7 @@ class Path(object):
     SuffixPattern = re.compile(r'\..*$')
     EscapePattern = re.compile(r'\\')
     MultipleSlashPattern = re.compile(r'(/)\1+')
-    SupportedCharactersPattern = re.compile(r'[&/:\w\. =-]*')
+    SupportedCharactersPattern = re.compile(r'[&$/:\w\. =-]*')
 
     def __str__(self):
         return self.as_str or ''
