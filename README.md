@@ -1,4 +1,4 @@
-![](images/title.png)
+![](https://github.com/abstractfactory/openmetadata/wiki/images/logo.png)
 
 ![](images/basic.png)
 
