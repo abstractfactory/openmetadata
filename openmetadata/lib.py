@@ -115,7 +115,7 @@ class Resource(object):
 
     def __eq__(self, other):
         """
-        Entrys within a parent MUST all have unique names.
+        Entries within a parent MUST all have unique names.
         If a name is not unique, there is a bug.
 
         """
