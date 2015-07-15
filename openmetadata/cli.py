@@ -62,7 +62,10 @@ def write(ctx, path, value, root):
 
     """
 
-    root = os.path.abspath(root) or os.getcwd()
+    try:
+        root = os.path.abspath(root)
+    except (AttributeError, TypeError):
+        root = os.getcwd()
 
     openmetadata.write(path=root,
                        metapath=path,
@@ -88,7 +91,10 @@ def read(ctx, path, root):
 
     """
 
-    root = os.path.abspath(root) or os.getcwd()
+    try:
+        root = os.path.abspath(root)
+    except (AttributeError, TypeError):
+        root = os.getcwd()
 
     sys.stdout.write(openmetadata.read(path=root,
                                        metapath=path))
@@ -118,7 +124,10 @@ def upgrade(ctx, mode, root):
 
     """
 
-    root = os.path.abspath(root) or os.getcwd()
+    try:
+        root = os.path.abspath(root)
+    except (AttributeError, TypeError):
+        root = os.getcwd()
 
     if mode == "walk":
         openmetadata.upgrade.walk(root)
