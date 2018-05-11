@@ -40,9 +40,9 @@ Absorbed some gamma radiation
 >>> openmetadata.write(root, 'age', 32)
 >>> openmetadata.write(root, 'height', 1.87)
 >>> openmetadata.read(root, 'height')
-32
->>> openmetadata.read(root, 'age')
 1.87
+>>> openmetadata.read(root, 'age')
+32
 >>> shutil.rmtree(root)
 ```
 
